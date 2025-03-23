@@ -465,7 +465,7 @@ class BallInpainter():
             # unfuse lora
             ######
             if it == num_iteration:
-                print("unfusing lora")
+                #print("unfusing lora")
                 self.pipeline.unfuse_lora()
                 self.pipeline.unload_lora_weights()
                 print("done")
@@ -488,10 +488,10 @@ class BallInpainter():
         best_ball = ball_images[0]
         output_image = merge_normal_map(image, best_ball, mask_ball_for_crop, x, y)
 
-        print("unfusing lora 2")
+        #print("unfusing lora 2")
         self.pipeline.unfuse_lora()
         self.pipeline.unload_lora_weights()
-        print("done")
+        #print("done")
 
         return Image.fromarray(output_image.astype(np.uint8))
 
@@ -553,10 +553,10 @@ class BallInpainter():
             **controlnet_kwargs
         )
 
-        print("unfusing lora 2")
+        #print("unfusing lora 2")
         self.pipeline.unfuse_lora()
         self.pipeline.unload_lora_weights()
-        print("done")
+        #print("done")
 
         return output_image
 

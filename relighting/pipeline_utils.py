@@ -126,7 +126,7 @@ def custom_prepare_latents(
                 prev_noise = noise.clone()
 
             # if strength is 1. then initialise the latents to noise, else initial to image + noise
-            print(timestep)
+            #print(timestep)
             latents = noise if is_strength_max else self.scheduler.add_noise(image_latents, noise, timestep)
             # if pure noise then scale the initial latents by the  Scheduler's init sigma
             latents = latents * self.scheduler.init_noise_sigma if is_strength_max else latents

@@ -315,8 +315,8 @@ def main():
                 if os.path.exists(os.path.join(raw_output_dir, outpng)):
                     continue
                 
-                print(f"using lora path {args.lora_path}")
-                print(f"using lora scale {args.lora_scale}")
+                #print(f"using lora path {args.lora_path}")
+                #print(f"using lora scale {args.lora_scale}")
                 pipe.pipeline.unfuse_lora()
                 pipe.pipeline.unload_lora_weights()
                 

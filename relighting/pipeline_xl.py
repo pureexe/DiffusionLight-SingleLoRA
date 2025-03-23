@@ -234,8 +234,8 @@ class CustomStableDiffusionXLControlNetInpaintPipeline(StableDiffusionXLControlN
 
         add_noise = True if denoising_start is None else False
         latent_timestep = torch.tensor([latent_timestep]).repeat(batch_size * num_images_per_prompt).to(device)
-        print("xxx2", latent_timestep)
-        print(timesteps)
+        #print("xxx2", latent_timestep)
+        #print(timesteps)
         latents_outputs = self.prepare_latents(
             batch_size * num_images_per_prompt,
             num_channels_latents,
@@ -510,14 +510,14 @@ class CustomStableDiffusionXLControlNetInpaintPipeline(StableDiffusionXLControlN
         return StableDiffusionXLPipelineOutput(images=image)
     
     def switch_lora(self, lora_path, lora_scale):
-        print("unfusing lora")
+        #print("unfusing lora")
         self.unfuse_lora()
         self.unload_lora_weights()
-        print("done")
-        print("loading new lora")
+        #print("done")
+        #print("loading new lora")
         self.load_lora_weights(lora_path)
         self.fuse_lora(lora_scale=lora_scale)
-        print("done")
+        #print("done")
 
     @torch.no_grad()
     def __call__(
@@ -871,7 +871,7 @@ class CustomStableDiffusionXLControlNetInpaintPipeline(StableDiffusionXLControlN
         switch_lora_flag = False
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
-                print("current", t)
+                #print("current", t)
 
                 if switch_lora_during_denoise and (not switch_lora_flag):
                     if t.item() < switch_lora_timestep:
