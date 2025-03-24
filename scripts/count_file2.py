@@ -9,6 +9,6 @@ def count_files_in_square_dirs(root_dir):
     return count
 
 # Example usage:
-root_directory = 'output/laion-aesthetics-1024'  # Replace with your directory path
+root_directory = '../output/laion-aesthetics-1024'  # Replace with your directory path
 file_count = count_files_in_square_dirs(root_directory)
 print(f'Total files ending with "_ev-00.png": {file_count}')
