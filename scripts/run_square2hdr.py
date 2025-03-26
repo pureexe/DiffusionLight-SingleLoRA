@@ -14,7 +14,7 @@ OUTPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/o
 
 def main():
     args = create_argparser().parse_args()
-    scene_ids = range(0,816)
+    scene_ids = range(0,1)
     scene_ids = scene_ids[args.idx::args.total]
     for scene_id in scene_ids:
         scene_name = f"{scene_id*1000:06d}"

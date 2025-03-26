@@ -134,7 +134,11 @@ def process_image(args: argparse.Namespace, file_name: str):
     # check if exist, skip!
     envmap_output_path = os.path.join(args.envmap_dir, file_name)
     if os.path.exists(envmap_output_path):
-        return None
+        try:
+            actual_exr = ezexr.imread(envmap_output_path)
+            return None
+        except:
+            pass
     
     # read ball image 
     ball_path = os.path.join(args.ball_dir, file_name)
@@ -160,7 +164,7 @@ def process_image(args: argparse.Namespace, file_name: str):
     try:
         fov = get_fov(args, npy_name)
     except:
-        print("FOV FAILED")
+        #print("FOV FAILED")
         return None
     nFOV = np.pi - fov
 
