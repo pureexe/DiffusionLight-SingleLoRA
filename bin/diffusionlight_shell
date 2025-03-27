@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# ssh -D 1080 -N -f pakkaponp@ist-frontend-001
+# ssh -D 1080 -N -f ist-frontend-001
+singularity shell --bind /ist:/ist  --bind /ist/ist-share/vision/relight/datasets:/data/pakkapon/datasets --nv --env HTTPS_PROXY='socks5h://localhost:1080' --env HTTP_PROXY='socks5h://localhost:1080' --env HF_HUB_CACHE=/ist/ist-share/vision/huggingface/hub/ --env HUB_HOME=/ist/ist-share/vision/huggingface/  --env HF_HOME=/ist/users/$USER/.cache/huggingface --env PYTHONPATH=$(pwd):$(pwd)/src /ist/ist-share/vision/pakkapon/singularity/diffusionlight0230.sif

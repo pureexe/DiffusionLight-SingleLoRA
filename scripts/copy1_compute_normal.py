@@ -15,10 +15,10 @@ from scipy.spatial.transform import Rotation as R
 import pyshtools
 
 MASTER_TYPE = torch.float16
-DATASET_PATH = "/ist/ist-share/vision/relight/datasets/laion-aesthetics-1024/images"
-OUTPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024"
-SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/raw"
-TOTAL_SCENE = 816
+DATASET_PATH = "/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/train/images/14n_copyroom1"
+OUTPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1"
+SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/raw"
+TOTAL_SCENE = 1
 
 def create_argparser():    
     parser = argparse.ArgumentParser()
@@ -42,10 +42,13 @@ def main():
         
         scene_id = f"{dir_id * 1000:06d}"
         chromeball_raw_dir =  SCENE_TEMPLATE.format(scene_id)
+        print(chromeball_raw_dir)
         if not os.path.exists(chromeball_raw_dir):
+            print("NOT CHROMEBALL EXIST")
             continue
         output_dir = os.path.join(OUTPUT_DIR, scene_id)
         if not os.path.exists(output_dir):
+            print("NOT OUTPUT_DIR EXIST")
             continue
 
         files_ids = sorted([a.replace('_ev-00.png','') for a in os.listdir(chromeball_raw_dir) if a.endswith('_ev-00.png')])
@@ -60,7 +63,7 @@ def main():
                 npz_path = os.path.join(normal_dir, file_id+'.npz')
                 if os.path.exists(npz_path):
                     continue
-                image_path = os.path.join(DATASET_PATH, scene_id, file_id +'.jpg')
+                image_path = os.path.join(DATASET_PATH, file_id +'.jpg')
                 image = skimage.io.imread(image_path)
                 image = skimage.img_as_float(image)
                 if len(image.shape) == 2:
