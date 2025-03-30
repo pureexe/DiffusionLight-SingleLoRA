@@ -43,7 +43,6 @@ def get_fov(args, filename):
     fov_path = os.path.join(args.fov_dir, new_filename)
     fov_px = np.load(fov_path)
     fov_rad = 2 * np.arctan2(IMAGE_WIDTH, 2*fov_px)
-    fov_rad = fov_rad / 4.0 # We devide FOV by 4 because Chromeball is 256px inside 1024px image 
     return fov_rad
 
 def create_envmap_grid(size: int):
@@ -58,8 +57,7 @@ def create_envmap_grid(size: int):
     # phi = torch.linspace(-1, 1, size * 2)
 
     theta = torch.linspace(np.pi / 2, -np.pi / 2, size)
-    #phi = torch.linspace(-np.pi, np.pi, size * 2)
-    phi = torch.linspace(0, 2*np.pi, size * 2) # need to use [0,2pi] to preserve previous result
+    phi = torch.linspace(-np.pi, np.pi, size * 2)
 
 
     #use indexing 'xy' torch match vision's homework 3
@@ -148,15 +146,15 @@ def process_image(args: argparse.Namespace, file_name: str):
         try:
             ball_image = ezexr.imread(ball_path)
         except:
-            #print(ball_path)
-            #print("FAILED TO READ EXR")
+            print(ball_path)
+            print("FAILED TO READ EXR")
             return None
     else:
         try:
             ball_image = skimage.io.imread(ball_path)
             ball_image = skimage.img_as_float(ball_image)
         except:
-            #print("FAILED TO READ SKIMAGE")
+            print("FAILED TO READ SKIMAGE")
             return None
 
     # apply black mark on region outside ball

@@ -21,10 +21,11 @@ def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--total", type=int, default=1, help="total process")
     parser.add_argument("-i","--idx", type=int, default=0, help="process id")
-    parser.add_argument("--input_template", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/envmap_perspective", help="template path for input dir")
-    parser.add_argument("--output_template", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_order100", help="template path for output dir")
-    parser.add_argument("--total_scene", type=int, default=1, help="number of total scene")
+    parser.add_argument("--input_template", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/envmap_perspective_fov", help="template path for input dir")
+    parser.add_argument("--output_template", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_fov_order100", help="template path for output dir")
+    parser.add_argument("--total_scene", type=int, default=816, help="number of total scene")
     parser.add_argument("--num_order", type=int, default=100, help="number of sperical harmonic order")
+    parser.add_argument("--threads", type=int, default=40, help="number of threads")
     return parser
 
 def process_file(meta):
@@ -53,7 +54,7 @@ def main():
     scene_ids = list(range(0, args.total_scene))
     scene_ids = scene_ids[args.idx::args.total]
     for scene_id in scene_ids:
-    
+        print("SCENE: ", scene_id)
         # running time measuring
         start_time = time.time()        
         
@@ -62,6 +63,7 @@ def main():
         output_dir = args.output_template.format(scene_name)
         
         if not os.path.exists(input_dir):
+            print(input_dir)
             continue
         
         os.makedirs(output_dir, exist_ok=True)

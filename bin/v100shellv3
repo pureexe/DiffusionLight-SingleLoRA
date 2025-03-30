@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# ssh -D 1080 -N -f ist-frontend-001
+SINGULARITYENV_HTTPS_PROXY='socks5h://localhost:1080' \
+SINGULARITYENV_HTTP_PROXY='socks5h://localhost:1080' \
+SINGULARITYENV_HF_HUB_CACHE='/ist/ist-share/vision/huggingface/hub/' \
+SINGULARITYENV_HUB_HOME='/ist/ist-share/vision/huggingface/' \
+SINGULARITYENV_HF_HOME="/ist/users/$USER/.cache/huggingface" \
+SINGULARITYENV_PYTHONPATH="$(pwd):$(pwd)/src" \
+singularity shell --bind /ist:/ist \
+  --bind /ist/ist-share/vision/relight/datasets:/data/pakkapon/datasets \
+  --nv /ist/ist-share/vision/pakkapon/singularity/diffusers0310v6.sif

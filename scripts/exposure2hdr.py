@@ -36,11 +36,14 @@ def process_image(args, info):
     
     #output directory
     hdrdir = args.output_dir
+    name = info['name']
+    exr_path = os.path.join(hdrdir, name+".exr")
+    if os.path.exists(exr_path):
+        return None # file already exist, we skip
     os.makedirs(hdrdir, exist_ok=True)
     os.chmod(hdrdir, 0o777)
     
     scaler = np.array([0.212671, 0.715160, 0.072169])
-    name = info['name']
     # ev value for each file
     evs = [e for e in sorted(info['ev'], reverse = True)]
 
@@ -97,7 +100,7 @@ def process_image(args, info):
     
     ldr_rgb, _, _ = hdr2ldr(hdr_rgb)
     
-    exr_path = os.path.join(hdrdir, name+".exr")
+    
     ezexr.imwrite(exr_path, hdr_rgb.astype(np.float32))
     os.chmod(exr_path, 0o777)
 
