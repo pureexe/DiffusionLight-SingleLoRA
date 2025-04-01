@@ -332,7 +332,7 @@ def apply_integrate_conv(shcoeff):
         0,
         (1/64) * np.pi
     ])
-    for j in range(3):
+    for j in range(3): #BUGGY CODE
         # check if it still access
         if j < shcoeff.shape[2] and  j < A.shape[0]:
             shcoeff[:,:,j] = A[j] * shcoeff[:,:,j]

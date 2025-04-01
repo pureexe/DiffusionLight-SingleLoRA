@@ -65,3 +65,15 @@ python efficient_sh_lotus.py --coeff_dir_template /ist/ist-share/vision/pakkapon
 
 # RERUN
 python envmap2sh_hdr.py -t 2 -i 0
+
+
+
+# RE-RUN COPYROOM10
+python validate_2lora.py --dataset /ist/ist-share/vision/relight/datasets/multi_illumination/spherical/train/images/14n_copyroom10 --output_dir /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/0000000 --no_save_intermediate --no_torch_compile --no_random_loader --lora_path real_checkpoint/rev3/Flickr2K/Flickr2K_balanced_aligned/checkpoint-140000
+
+python ball2perspectiveenvmap.py --ball_dir /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/000000/square_hdr_gt --envmap_dir /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/000000/envmap_perspective_fov_gt --fov_dir  /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/000000/focal --threads 25 --fov_width 512
+
+python envmap2sh_hdr.py --input_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/envmap_perspective_fov_gt --output_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/{}/shcoeff_perspective_fov_order100_gt --total_scene 1 --num_order 100
+
+
+python efficient_sh_lotus_parallel.py --coeff_dir_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/shcoeff_perspective_div4_order100_gt --normal_dir_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/normal_lotus --output_dir_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/shading_exr_order2_div4v2_gt  --vizmax_dir_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/shading_exr_order2_div4v2_viz_max_gt --vizldr_dir_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/shading_exr_order2_div4v2_viz_ldr_gt --num_order 2

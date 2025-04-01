@@ -19,9 +19,6 @@ import argparse
 from sh_utils import get_ideal_normal_ball_z_up, get_shcoeff, compute_background, sample_from_sh, unfold_sh_coeff, apply_integrate_conv
 from tonemapper import TonemapHDR
 
-
-USE_VIZ = True
-
 def cartesian_to_spherical(vectors):
     """
     Converts unit vectors to spherical coordinates (theta, phi).
@@ -100,7 +97,7 @@ def process_scene(args, info):
     ezexr.imwrite(output_path, shading)
     os.chmod(output_path, 0o777)
     
-    if USE_VIZ:
+    if args.use_viz==1:
         vizmax_dir = args.vizmax_dir_template.format(scene_name)
         vizldr_dir = args.vizldr_dir_template.format(scene_name)
         
@@ -150,7 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_fov_order6_viz_ldr", help='template for vizldr dir')
     parser.add_argument('--total_scene', type=int, default=816)
     parser.add_argument('--num_order', type=int, default=6)
-    parser.add_argument('--threads', type=int, default=6)
-    parser.add_argument('--use_viz', action='store_true')
+    parser.add_argument('--threads', type=int, default=16)
+    parser.add_argument('--use_viz', type=int, default=1)
     args = parser.parse_args()
     efficient_rendering(args)
