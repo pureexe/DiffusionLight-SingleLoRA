@@ -11,6 +11,7 @@ from functools import partial
 from tqdm.auto import tqdm
 import os
 import shutil
+from tonemapper import TonemapHDR
 
 try:
     import ezexr
@@ -38,13 +39,15 @@ def copy_fov_from_neightbour(args, filename):
     shutil.copy2(os.path.join(current_dir, other_fov[0]),fov_path)
 
 def get_fov(args, filename):
-    IMAGE_WIDTH = args.fov_width
     new_filename = filename.replace(".exr",".npy")
-    fov_path = os.path.join(args.fov_dir, new_filename)
-    fov_px = np.load(fov_path)
-    fov_rad = 2 * np.arctan2(IMAGE_WIDTH, 2*fov_px)
-    fov_rad = fov_rad / 4.0 # We devide FOV by 4 because Chromeball is 256px inside 1024px image 
+    focal_path = os.path.join(args.fov_dir, new_filename)
+    focal_px = np.load(focal_path) # focal length in term of pxiel
+    fov_rad = 2 * np.arctan2(args.fov_width, 2*focal_px)
     return fov_rad
+
+def get_chromeballfov_from_fov(fov_rad):
+    return fov_rad / 4.0     # We devide FOV by 4 because Chromeball is 256px inside 1024px image 
+
 
 def create_envmap_grid(size: int):
     """
@@ -58,8 +61,8 @@ def create_envmap_grid(size: int):
     # phi = torch.linspace(-1, 1, size * 2)
 
     theta = torch.linspace(np.pi / 2, -np.pi / 2, size)
-    #phi = torch.linspace(-np.pi, np.pi, size * 2)
-    phi = torch.linspace(0, 2*np.pi, size * 2) # need to use [0,2pi] to preserve previous result
+    #phi = torch.linspace(-np.pi, np.pi, size * 2) #use for debug result thing in the middle is easier t look
+    phi = torch.linspace(0, 2*np.pi, size * 2) # need to use [0,2pi] to match pyshtool convention
 
 
     #use indexing 'xy' torch match vision's homework 3
@@ -165,10 +168,11 @@ def process_image(args: argparse.Namespace, file_name: str):
     # get field of view
     try:
         fov = get_fov(args, npy_name)
+        fov = get_chromeballfov_from_fov(fov)
     except:
-        #print("FOV FAILED")
         return None
-    nFOV = np.pi - fov
+    
+    nFOV = np.pi - fov #half of chromeball normal
 
     # compute  normal map that create from reflect vector
     env_grid = create_envmap_grid(args.envmap_height * args.scale)  # [phi [-pi,pi], theta [pi/2, -pi/2]]
@@ -179,29 +183,33 @@ def process_image(args: argparse.Namespace, file_name: str):
 
     normal = get_normal_vector(I[None,None], reflect_vec) # (x-forward, y-right, z-up) range [-1,1]
 
-    
     # We ignore X axis because it represent forward. (y-right, z-up) range [-1,1]
-    #y,z = reflect_vec[...,1], reflect_vec[...,2]
-    y,z = normal[...,1], normal[...,2]
+    #y,z = reflect_vec[...,1], reflect_vec[...,2] 
+    y,z = normal[...,1], normal[...,2] # we use normal too indicate location on the chromeball.
     
     # Normalize FOV (radius) that the limit of FOV will be on the border
-    r = (nFOV) / (np.pi)  #
+    r = (nFOV) / (np.pi)  
+        
     #u,v is the position on the ball 
     u = y / r 
     v = z / r
 
-    mask = (u >= -1) & (u <= 1) & (v >= -1) & (v <= 1)
-
+    mask = (u >= -1) & (u <= 1) & (v >= -1) & (v <= 1) 
 
     pos = np.concatenate([u[...,None],v[...,None]], axis=-1)
+    
+    # if it fall outside region of chromeball. we pad to be edge of chromeball
+    CLAMP_CHROMEBALL_BORDER = False 
+    if CLAMP_CHROMEBALL_BORDER:
+        pos = np.clip(pos, -1 + 1e-6,1 - 1e-6)
 
     # since Z-UP (top 1, bottom -1) but torch grid sample is top-1 bottom 1 (is z-down) we flip only z axis 
-    BLENDER_CONVENTION = True
-    if BLENDER_CONVENTION:
+    # but if we use for blende rendering, it looking from inside, so it need to flip y axis as well.
+    LOOKING_FROM_INSIDE = False 
+    if LOOKING_FROM_INSIDE:
         pos  = -pos
     else:
         pos[...,1] = -pos[...,1]
-
     
     env_map = None
     
@@ -217,11 +225,17 @@ def process_image(args: argparse.Namespace, file_name: str):
         env_map = torch.nn.functional.grid_sample(ball_image, grid, mode='bilinear', padding_mode='border', align_corners=False)
         env_map = env_map[0].permute(1,2,0).numpy()
 
-    env_map = env_map * mask[...,None]
+    APPLY_MASK = True
+    if APPLY_MASK:
+        env_map = env_map * mask[...,None]
                 
     env_map_default = skimage.transform.resize(env_map, (args.envmap_height, args.envmap_height*2), anti_aliasing=True)
     if file_name.endswith(".exr"):
         ezexr.imwrite(envmap_output_path, env_map_default.astype(np.float32))
+        tonemap = TonemapHDR(2.4,99,0.9)
+        image, _, _ = tonemap(env_map_default)
+        image = skimage.img_as_ubyte(image)
+        skimage.io.imsave(envmap_output_path+'.png', image)
     else:
         env_map_default = skimage.img_as_ubyte(env_map_default)        
         skimage.io.imsave(envmap_output_path, env_map_default)

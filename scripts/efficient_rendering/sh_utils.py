@@ -155,6 +155,7 @@ def get_ideal_normal_ball_z_up(size):
 def cartesian_to_spherical(vectors):
     """
     Converts unit vectors to spherical coordinates (theta, phi).
+    Convention: pyshtool (0-2pi), [-pi/2, pi/2] (x-right, y-forward, z-up)
 
     Parameters:
     vectors (numpy.ndarray): Input array of shape (..., 3), representing unit vectors.
@@ -319,22 +320,33 @@ def get_rotation_matrix_from_vectors_single(a, b):
     R = np.eye(3) + vx + np.dot(vx, vx) * (1 - c) / (s ** 2)
     return R    
 
-def apply_integrate_conv(shcoeff):
-    # apply integrate on diffuse surface 
-    # @see https://cseweb.ucsd.edu/~ravir/papers/envmap/envmap.pdf
+#TODO: Need unit testing
+def apply_integrate_conv(shcoeff, lmax=6):
+    """
+    Apply integrate on diffuse surface 
+    @see https://cseweb.ucsd.edu/~ravir/papers/envmap/envmap.pdf
+    Args:
+        shcoeff (np.ndarray): input shcoeff shape of pyshtool format [3,2,order+1,order+1] 
+        lmax (int): maximum number of the order
+    Returns:
+        np.ndarray: the shcoeff that already apply integrated
+    """
+    # make sure the input is in pyshtool format ()
     assert shcoeff.shape[0] == 3 and shcoeff.shape[1] == 2
+    
+    # define "A" multiplyer shown in paper
     A = np.array([
-        np.pi, # 0
-        2*np.pi / 3, # 1
-        np.pi / 4, # 2
-        0,
-        -(1/24) * np.pi,
-        0,
-        (1/64) * np.pi
+        np.pi, # order0
+        2*np.pi / 3, # order1
+        np.pi / 4, # order2
+        0, # order3
+        -(1/24) * np.pi, #order4
+        0, #order5
+        (1/64) * np.pi #order6
     ])
-    for j in range(3): #BUGGY CODE
-        # check if it still access
-        if j < shcoeff.shape[2] and  j < A.shape[0]:
+    assert lmax <= (A.shape[0] - 1) # make sure that number of order less or equal A
+    for j in range(lmax):
+        if j < A.shape[0]: # if sh order more than A, we don't apply the order 
             shcoeff[:,:,j] = A[j] * shcoeff[:,:,j]
     return shcoeff
 
@@ -379,3 +391,4 @@ def from_y_up_to_z_up(normal_map: np.ndarray) -> np.ndarray:
     transformed = (rotation_matrix[None, None] @ normal_map[..., None])[..., 0]
         
     return transformed
+

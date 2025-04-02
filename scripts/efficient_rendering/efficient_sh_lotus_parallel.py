@@ -16,39 +16,8 @@ import ezexr
 print("IMPORT DONE")
 import time
 import argparse
-from sh_utils import get_ideal_normal_ball_z_up, get_shcoeff, compute_background, sample_from_sh, unfold_sh_coeff, apply_integrate_conv
+from sh_utils import get_ideal_normal_ball_z_up, get_shcoeff, compute_background, sample_from_sh, unfold_sh_coeff, apply_integrate_conv, from_x_left_to_z_up, cartesian_to_spherical
 from tonemapper import TonemapHDR
-
-def cartesian_to_spherical(vectors):
-    """
-    Converts unit vectors to spherical coordinates (theta, phi).
-
-    Parameters:
-    vectors (numpy.ndarray): Input array of shape (..., 3), representing unit vectors.
-
-    Returns:
-    tuple: A tuple containing two arrays:
-        - theta (numpy.ndarray): Array of theta values in the range [-pi/2, pi/2].
-        - phi (numpy.ndarray): Array of phi values in the range [0, 2*pi].
-    """
-    # Ensure input is a numpy array
-    vectors = np.asarray(vectors)
-
-    # Validate shape
-    if vectors.shape[-1] != 3:
-        raise ValueError("Input must have shape (..., 3).")
-
-    # Extract components of the vectors
-    x, y, z = vectors[..., 0], vectors[..., 1], vectors[..., 2]
-
-    # Calculate theta (latitude angle)
-    theta = np.arcsin(y)  # arcsin gives range [-pi/2, pi/2]
-
-    # Calculate phi (longitude angle)
-    phi = np.arctan2(x, z)  # atan2 accounts for correct quadrant
-    phi = (phi + 2 * np.pi) % (2 * np.pi)  # Normalize phi to range [0, 2*pi]
-
-    return theta, phi
 
 def process_scene(args, info):
         
@@ -79,6 +48,7 @@ def process_scene(args, info):
         normal_map = normal_map[normal_map.files[0]]
     except:
         return None
+    normal = from_x_left_to_z_up(normal_map) # convert from Lotus convention (x-left.y-up,z-forward) to pyshtool (x-right,y-forward,z-up) 
     theta, phi = cartesian_to_spherical(normal_map)
 
     # load shcoeff 
@@ -90,7 +60,8 @@ def process_scene(args, info):
     shcoeff = np.load(coeff_path) # shcoeff shape (3,10201) (order-100)        
     shcoeff = unfold_sh_coeff(shcoeff,max_sh_level=args.num_order) #(3,2,7,7) order 6
 
-    shcoeff = apply_integrate_conv(shcoeff)
+
+    shcoeff = apply_integrate_conv(shcoeff, lmax=args.num_order)
     shading = sample_from_sh(shcoeff, lmax=args.num_order, theta=theta, phi=phi)
     
     shading = np.float32(shading)

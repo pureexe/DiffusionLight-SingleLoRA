@@ -50,13 +50,19 @@ def process_scene(args, info):
     shcoeff = np.load(coeff_path) # shcoeff shape (3,10201) (order-100)        
     shcoeff = unfold_sh_coeff(shcoeff,max_sh_level=args.num_order) #(3,2,7,7) order 6
 
-    shcoeff = apply_integrate_conv(shcoeff)
+    #shcoeff = apply_integrate_conv(shcoeff,lmax=args.num_order)
     shading = sample_from_sh(shcoeff, lmax=args.num_order, theta=theta, phi=phi)
-    shading = shading / 10
-    percentile_99 = np.percentile(shading,99)
-    print(percentile_99)
     
-    shading = np.clip(shading, 0, 1)
+    #shading = shading / 10
+    #percentile_99 = np.percentile(shading,99)
+    #print(percentile_99)
+    #shading = np.clip(shading, 0, 1)
+    percentile_99 = 0.0
+    
+    tonemap = TonemapHDR(gamma=2.4, percentile=50, max_mapping=0.5)
+    shading = np.clip(shading, 0, np.inf)
+    shading, _, _ = tonemap(shading)
+    
     shading = shading * mask[...,None]
     shading = skimage.img_as_ubyte(shading)
     skimage.io.imsave(output_path, shading)
@@ -77,8 +83,8 @@ def efficient_rendering(args):
     fn = partial(process_scene, args)
     with Pool(cpu_count()) as pool:
         a = list(tqdm(pool.imap_unordered(fn, queues), total=len(queues)))
-        print(a)
-        print("MAX PERCENTILE: ", np.array(a).max())
+        #print(a)
+        #print("MAX PERCENTILE: ", np.array(a).max())
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process index and total.")
