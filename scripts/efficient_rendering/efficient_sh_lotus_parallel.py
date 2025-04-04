@@ -60,8 +60,9 @@ def process_scene(args, info):
     shcoeff = np.load(coeff_path) # shcoeff shape (3,10201) (order-100)        
     shcoeff = unfold_sh_coeff(shcoeff,max_sh_level=args.num_order) #(3,2,7,7) order 6
 
-
-    shcoeff = apply_integrate_conv(shcoeff, lmax=args.num_order)
+    if args.apply_integrate == 1:
+        shcoeff = apply_integrate_conv(shcoeff, lmax=args.num_order)
+    
     shading = sample_from_sh(shcoeff, lmax=args.num_order, theta=theta, phi=phi)
     
     shading = np.float32(shading)
@@ -118,6 +119,7 @@ if __name__ == "__main__":
     parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_fov_order6_viz_ldr", help='template for vizldr dir')
     parser.add_argument('--total_scene', type=int, default=816)
     parser.add_argument('--num_order', type=int, default=6)
+    parser.add_argument('--apply_integrate', type=int, default=1)
     parser.add_argument('--threads', type=int, default=16)
     parser.add_argument('--use_viz', type=int, default=1)
     args = parser.parse_args()

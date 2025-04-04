@@ -168,6 +168,7 @@ def process_image(args: argparse.Namespace, file_name: str):
     # get field of view
     try:
         fov = get_fov(args, npy_name)
+        print("IMAGE FOV: ", fov * 180 / np.pi)
         fov = get_chromeballfov_from_fov(fov)
     except:
         return None
@@ -175,12 +176,12 @@ def process_image(args: argparse.Namespace, file_name: str):
     nFOV = np.pi - fov #half of chromeball normal
 
     # compute  normal map that create from reflect vector
-    env_grid = create_envmap_grid(args.envmap_height * args.scale)  # [phi [-pi,pi], theta [pi/2, -pi/2]]
+    env_grid = create_envmap_grid(args.envmap_height * args.scale)  # [phi [0,2pi], theta [pi/2, -pi/2]]
     H,W = env_grid.shape[:2]
 
     theta, phi = env_grid[...,0], env_grid[...,1]
     reflect_vec = get_cartesian_from_spherical(theta, phi) # (x-forward, y-right, z-up) range [-1,1]
-
+    # TODO: this is oorthographic please change this to perspective.
     normal = get_normal_vector(I[None,None], reflect_vec) # (x-forward, y-right, z-up) range [-1,1]
 
     # We ignore X axis because it represent forward. (y-right, z-up) range [-1,1]
