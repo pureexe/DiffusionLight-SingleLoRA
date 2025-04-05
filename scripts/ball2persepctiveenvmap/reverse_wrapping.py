@@ -22,6 +22,8 @@ try:
 except:
     pass
 
+VIZ_TONEMAP = False
+
 def create_envmap_grid(size: int):
     """
     PYSHTOOL CONVENTION (x-forward, y-right, z-up)
@@ -97,45 +99,6 @@ def get_rand_normal_vector():
     x_value = np.sqrt(np.clip(1 - (rand_value[0]**2) - (rand_value[1]**2),0, np.inf))
     return x_value, rand_value[0], rand_value[1]
 
-# def solve_for_normal(reflect_directions, ball_distance):
-#     normal_directions = np.zeros_like(reflect_directions) #H,W,3
-#     def make_equations(d, Lx, Ly, Lz):
-#         """ 
-#         Input distance (d) and Reflection vector (L) in 3 direction
-#         Returns a function that computes the equations for given (x, y, z)
-#         """
-#         def equations(variables):
-#             """
-#             Assume the camera is at [0,0,0] the chromeball unit size 1 at [d,0,0]
-#             """
-#             x, y, z = variables  # Unknowns
-#             S = (x - d) * Lx + y * Ly + z * Lz  # Compute S
-#             denom = np.sqrt(np.clip(x**2 + y**2 + z**2, 0, np.inf))  # Common denominator
-#             return [
-#                 2 * S * (x - d) - Lx + (x / denom), #normal in x axis from given reflect-vector L and assume camera at origin
-#                 2 * S * y - Ly + (y / denom), # normal in y axis
-#                 2 * S * z - Lz + (z / denom), # normal in z axis
-#             ]
-#         return equations
-#     for i in tqdm(range(reflect_directions.shape[0])):
-#         for j in range(reflect_directions.shape[1]):
-#             L = reflect_directions[i,j]
-#             rX, rY, rZ = get_rand_normal_vector()
-#             equations_func = make_equations(ball_distance, L[0], L[1], L[2])
-#             initial_guess = [ball_distance - rX, rY, rZ]
-#             #initial_guess = [ball_distance, 0, 0]
-#             result = root(equations_func, initial_guess)
-#             x,y,z = result['x']
-#             x = ball_distance - x 
-#             normal_directions[i,j,0] = x
-#             normal_directions[i,j,1] = y
-#             normal_directions[i,j,2] = z
-#             normal_directions[i,j] = normal_directions[i,j] / np.linalg.norm(normal_directions[i,j]) 
-#     return normal_directions
-
-            #rX, rY, rZ = get_rand_normal_vector()
-            #initial_guess = [ball_distance - rX, rY, rZ]
-
 def solve_for_normal(reflect_directions, ball_distance):
     """
     Using scipy's least square to solve for normal direction
@@ -195,8 +158,8 @@ def solve_for_normal(reflect_directions, ball_distance):
 def process_image(args: argparse.Namespace, file_name: str):
     # check if exist, skip!
     envmap_output_path = os.path.join(args.envmap_dir, file_name)
-    # if os.path.exists(envmap_output_path):
-    #     return None
+    if os.path.exists(envmap_output_path):
+        return None
 
     # read ball image 
     ball_path = os.path.join(args.ball_dir, file_name)
@@ -207,14 +170,14 @@ def process_image(args: argparse.Namespace, file_name: str):
             ball_image = skimage.io.imread(ball_path)
             ball_image = skimage.img_as_float(ball_image)
     except:
-        print("FAILED TO READ BBALL")
+        #print("FAILED TO READ BBALL")
         return None # failed to read image
         
     # read focal length
     try:
         fov = get_fov(args, file_name)
     except:
-        print("FAILED TO READ FOV")
+        #print("FAILED TO READ FOV")
         return None
     
     # get reflect vector for environment map
@@ -252,10 +215,11 @@ def process_image(args: argparse.Namespace, file_name: str):
     env_map_default = skimage.transform.resize(env_map, (args.envmap_height, args.envmap_height*2), anti_aliasing=True)
     if file_name.endswith(".exr"):
         ezexr.imwrite(envmap_output_path, env_map_default.astype(np.float32))
-        tonemap = TonemapHDR(2.4,99,0.9)
-        image, _, _ = tonemap(env_map_default)
-        image = skimage.img_as_ubyte(image)
-        skimage.io.imsave(envmap_output_path+'.png', image)
+        if VIZ_TONEMAP:
+            tonemap = TonemapHDR(2.4,99,0.9)
+            image, _, _ = tonemap(env_map_default)
+            image = skimage.img_as_ubyte(image)
+            skimage.io.imsave(envmap_output_path+'.png', image)
     else:
         env_map_default = skimage.img_as_ubyte(env_map_default)        
         skimage.io.imsave(envmap_output_path, env_map_default)
