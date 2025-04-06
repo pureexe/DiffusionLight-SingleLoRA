@@ -137,7 +137,7 @@ def get_viewing_direction(ball_size: int,ball_ratio: float, fov: float):
     return viewing_directions
 
 def get_fov(args, filename):
-    new_filename = filename.replace(".exr",".npy")
+    new_filename = filename.split('.')[0]+'.npy'
     focal_path = os.path.join(args.focal_dir, new_filename)
     focal_px = np.load(focal_path) # focal length in term of pxiel
     fov_rad = 2 * np.arctan2(args.fov_width, 2*focal_px)
@@ -152,7 +152,7 @@ def get_chromeball_half_angle(fov, ball_ratio):
 def get_theta_ball(fov, ball_ratio):
     theta = get_chromeball_half_angle(fov, ball_ratio)
     theta_ball = np.pi / 2 - theta 
-    return theta
+    return theta_ball
 
 def process_image(args: argparse.Namespace, file_name: str):
     # check if exist, skip!
@@ -170,6 +170,9 @@ def process_image(args: argparse.Namespace, file_name: str):
     
     # get theta ball
     theta_ball = get_theta_ball(fov, args.ball_ratio)
+    #print("THETA_BALL: ", theta_ball * 180 / np.pi)
+    theta_ball = (180-75) / 180 * np.pi
+    print(theta_ball)
     
     # get environment map
     env_path = os.path.join(args.envmap_dir, file_name)
@@ -188,14 +191,17 @@ def process_image(args: argparse.Namespace, file_name: str):
     
     #pos_ndc = create_ndc_grid(args.ball_size, args.ball_ratio)
     #pos = (theta_ball * pos_ndc) / args.ball_ratio
-    
     _, mask = get_ideal_normal_ball(args.ball_size) # i just need a mask for a ball.
     theta_phi = get_ball_theta_phi(args.ball_size, azimuth_limit=theta_ball, elevation_limit=theta_ball)
+    # print(theta_phi[:,128:256,0].min())
+    # print(theta_phi[:,128:256,0].max())
+    # print(theta_phi[:,0:128,0].min())
+    # print(theta_phi[:,0:128,0].max())
+    # exit()
     pos = theta_phi
-    pos[..., 0] = pos[..., 0] / (2 * np.pi)
-    pos[..., 1] = pos[..., 1] / ( np.pi / 2)
-    
-    
+    pos[..., 0] = pos[..., 0] / (2 * np.pi) # scale to [0,1]
+    pos[..., 0] = (pos[..., 0] * 2.0) - 1.0 # scale to [-1,1]
+    pos[..., 1] = pos[..., 1] / ( np.pi / 2) # scale to [-1,1]
     
     # since Z-UP (top 1, bottom -1) but torch grid sample is top -1 bottom 1 (is z-down) we flip only z axis 
     # but if we use for blender rendering, it looking from inside, so it need to flip y axis as well.

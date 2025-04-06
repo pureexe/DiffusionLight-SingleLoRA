@@ -22,7 +22,7 @@ try:
 except:
     pass
 
-VIZ_TONEMAP = False
+VIZ_TONEMAP = True
 
 def create_envmap_grid(size: int):
     """
@@ -44,12 +44,37 @@ def create_envmap_grid(size: int):
     return theta_phi
 
 
+# def create_argparser():    
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/square_hdr_gt" ,help='directory that contain the image') 
+#     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
+#     parser.add_argument("--envmap_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/envmap_reverse_unwrap" ,help='directory to output environment map') #dataset name or directory 
+#     parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
+#     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
+#     parser.add_argument("--scale", type=int, default=4, help="scale factor")
+#     parser.add_argument("--fov_width", type=int, default=512, help="size of image to calcurate focal")
+#     parser.add_argument("--threads", type=int, default=25, help="num thread for pararell processing")
+#     return parser
+
+
+# def create_argparser():    
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/square_hdr_gt" ,help='directory that contain the image') 
+#     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
+#     parser.add_argument("--envmap_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/envmap" ,help='directory to output environment map') #dataset name or directory 
+#     parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
+#     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
+#     parser.add_argument("--scale", type=int, default=4, help="scale factor")
+#     parser.add_argument("--fov_width", type=int, default=512, help="size of image to calcurate focal")
+#     parser.add_argument("--threads", type=int, default=25, help="num thread for pararell processing")
+#     return parser
+
 def create_argparser():    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/square_hdr_gt" ,help='directory that contain the image') 
-    parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
-    parser.add_argument("--envmap_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/envmap_reverse_unwrap" ,help='directory to output environment map') #dataset name or directory 
-    parser.add_argument("--envmap_height", type=int, default=256, help="size of the environment map height in pixel (height)")
+    parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input" ,help='directory that contain the image') 
+    parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/focal",help='directory that contain horizontal focal file.') 
+    parser.add_argument("--envmap_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid" ,help='directory to output environment map') #dataset name or directory 
+    parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
     parser.add_argument("--scale", type=int, default=4, help="scale factor")
     parser.add_argument("--fov_width", type=int, default=512, help="size of image to calcurate focal")
@@ -57,12 +82,11 @@ def create_argparser():
     return parser
 
 def get_fov(args, filename):
-    new_filename = filename.replace(".exr",".npy")
+    new_filename = filename.split('.')[0]+'.npy'
     focal_path = os.path.join(args.focal_dir, new_filename)
     focal_px = np.load(focal_path) # focal length in term of pxiel
     fov_rad = 2 * np.arctan2(args.fov_width, 2*focal_px)
     return fov_rad
-
 
 def get_chromeball_half_angle(fov, ball_ratio):
     # get how much half angle of chromeball over
@@ -117,27 +141,28 @@ def solve_for_normal(reflect_directions, ball_distance):
         """
         def equations(variables):
             """
-            Assume the camera is at [0,0,0] the chromeball unit size 1 at [d,0,0]
+            Assume the camera is at [0,0,0] the chromeball unit size 1 at [-d,0,0] (we need -d to preserve pyshtool convention)
             """
             x, y, z = variables  # Unknowns
-            S = (x - d) * Lx + y * Ly + z * Lz  # Compute S
+            S = (x + d) * Lx + y * Ly + z * Lz  # Compute S
             denom = np.sqrt(np.clip(x**2 + y**2 + z**2, 0, np.inf))  # Common denominator
             return [
-                2 * S * (x - d) - Lx + (x / denom), #normal in x axis from given reflect-vector L and assume camera at origin
+                2 * S * (x + d) - Lx + (x / denom), #normal in x axis from given reflect-vector L and assume camera at origin
                 2 * S * y - Ly + (y / denom), # normal in y axis
                 2 * S * z - Lz + (z / denom), # normal in z axis
-                (x - d) ** 2 + y ** 2 + z ** 2 - 1  # Added constraint that normal should be on sphere surface
+                (x + d) ** 2 + y ** 2 + z ** 2 - 1,  # Added constraint that normal should be on sphere surface 
+                #np.clip((x + d), 0, np.inf) # Enforce x to be negative?
             ]
         return equations
     
-    
-    for i in (range(reflect_directions.shape[0])):
+    mask = np.zeros_like(reflect_directions[...,0])
+    for i in tqdm(range(reflect_directions.shape[0])):
         for j in range(reflect_directions.shape[1]):
             Lx, Ly, Lz = reflect_directions[i, j]
 
             # Set up and solve least squares for this pixel
             equations_func = make_equations(ball_distance, Lx, Ly, Lz)
-            initial_guess = [ball_distance-1, 0, 0]
+            initial_guess = [-ball_distance+1, 0, 0]
             result = least_squares(
                 equations_func, 
                 initial_guess,
@@ -145,21 +170,22 @@ def solve_for_normal(reflect_directions, ball_distance):
             
             # Extract and normalize result
             x, y, z = result.x
-            normal_vec = np.array([ball_distance - x, y, z])
+            normal_vec = np.array([ball_distance + x, y, z])
             normal_vec = normal_vec / np.linalg.norm(normal_vec)
+            mask[i,j] = ball_distance + x >= 0 
 
             # Store result
             normal_directions[i, j] = normal_vec
 
-    return normal_directions
+    return normal_directions, mask
     
 
 
 def process_image(args: argparse.Namespace, file_name: str):
     # check if exist, skip!
     envmap_output_path = os.path.join(args.envmap_dir, file_name)
-    if os.path.exists(envmap_output_path):
-        return None
+    # if os.path.exists(envmap_output_path):
+    #     return None
 
     # read ball image 
     ball_path = os.path.join(args.ball_dir, file_name)
@@ -175,9 +201,10 @@ def process_image(args: argparse.Namespace, file_name: str):
         
     # read focal length
     try:
-        fov = get_fov(args, file_name)
+        fov = get_fov(args, file_name) # 36.7811506859767
+        # print("FOV: ---> ", fov * 180 / np.pi)
     except:
-        #print("FAILED TO READ FOV")
+        print("FAILED TO READ FOV")
         return None
     
     # get reflect vector for environment map
@@ -186,7 +213,7 @@ def process_image(args: argparse.Namespace, file_name: str):
     reflect_directions = get_cartesian_from_spherical(theta, phi) # (x-forward, y-right, z-up) range [-1,1]
     half_angle = get_chromeball_half_angle(fov,args.ball_ratio)
     ball_distance = get_chromeball_distance(half_angle)
-    normal_directions = solve_for_normal(reflect_directions, ball_distance)
+    normal_directions, mask = solve_for_normal(reflect_directions, ball_distance)
     
     # We ignore X axis because it represent forward. (y-right, z-up) range [-1,1]
     y,z = normal_directions[...,1], normal_directions[...,2] # we use normal too indicate location on the chromeball.
@@ -242,6 +269,9 @@ def main(args):
 
     # create partial function for pararell processing
     process_func = partial(process_image, args)
+    
+    process_func(files[0])
+    exit()
     
     # pararell processing
     with Pool(args.threads) as p:
