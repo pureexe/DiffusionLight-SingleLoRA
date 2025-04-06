@@ -14,6 +14,7 @@ import shutil
 from tonemapper import TonemapHDR
 from scipy.optimize import root
 from scipy.optimize import least_squares
+
 import math 
 
 try:
@@ -25,7 +26,7 @@ VIZ_TONEMAP = True
 
 def create_argparser():    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/envmap_reverse_unwrap_ball_inverse2" ,help='directory that contain the image') 
+    parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/envmap_reverse_unwrap_ball_inverse" ,help='directory that contain the image') 
     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
     parser.add_argument("--envmap_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/envmap_reverse_unwrap" ,help='directory to output environment map') #dataset name or directory 
     parser.add_argument("--ball_size", type=int, default=256, help="size of the environment map height in pixel (height)")
@@ -107,21 +108,19 @@ def create_ndc_grid(ball_size: int,ball_ratio: float):
     Create NDC coordinate  (U,V) for the chromeball. 
     U is horizontal, V is vertical. U-right, V-up
     """
-    u = torch.linspace(-ball_ratio, ball_ratio, ball_size)
+    u = torch.linspace(ball_ratio, -ball_ratio, ball_size)
     v = torch.linspace(ball_ratio, -ball_ratio, ball_size) # need to use [0,2pi] to match pyshtool convention
 
 
     #use indexing 'xy' torch match vision's homework 3
-    u, v = torch.meshgrid(u, v ,indexing='xy')     
+    u, v = torch.meshgrid(u, v ,indexing='ij')     
     
     pos_ndc= torch.cat([u[..., None], v[..., None]], dim=-1)
     pos_ndc = pos_ndc.numpy()
     return pos_ndc
 
-def normalize(v):
-    return v / (np.linalg.norm(v, axis=-1, keepdims=True) + 1e-8)
     
-def get_viewing_directions(ball_size: int,ball_ratio: float, fov: float):
+def get_viewing_direction(ball_size: int,ball_ratio: float, fov: float):
     """
     Create camera coordinate
     Convention PYSHTOOL (x-forward, y-right, z-up)
@@ -130,86 +129,12 @@ def get_viewing_directions(ball_size: int,ball_ratio: float, fov: float):
     """
     pos_ndc = create_ndc_grid(ball_size, ball_ratio)
     half_tan = math.tan(fov / 2)    
-    pos = pos_ndc * half_tan
     viewing_directions = np.ones((ball_size,ball_size,3))
-    viewing_directions[...,0] *= 1 # we look into -x 
-    viewing_directions[...,1:3] = pos
-    viewing_directions = normalize(viewing_directions)
+    viewing_directions[...,0] *= -1 # we look into -x 
+    viewing_directions[...,1:3] = pos_ndc
+    norm = np.linalg.norm(viewing_directions, axis=2, keepdims=True)
+    viewing_directions = viewing_directions / (norm + 1e-8)  # Add epsilon to avoid division by zero
     return viewing_directions
-
-def spherical_to_cartesian(theta, phi):
-    """
-    Converts spherical coordinates (theta, phi) to unit vectors.
-
-    Parameters:
-    theta (numpy.ndarray): Array of theta values in the range [-pi/2, pi/2].
-    phi (numpy.ndarray): Array of phi values in the range [0, 2*pi]. # more like [-pi, pi]
-
-    Returns:
-    numpy.ndarray: Output array of shape (..., 3), representing unit vectors.
-    """
-    # Ensure inputs are numpy arrays
-    theta = np.asarray(theta)
-    phi = np.asarray(phi)
-
-    # Calculate components of the unit vectors
-    x = np.cos(theta) * np.cos(phi)
-    y = np.cos(theta) * np.sin(phi)
-    z = np.sin(theta)
-
-    # Stack components into output array
-    vectors = np.stack([x, y, z], axis=-1)
-
-    return vectors
-
-def cartesian_to_spherical(cartesian_coordinates):
-    """Converts Cartesian coordinates to spherical coordinates.
-
-    Args:
-        cartesian_coordinates: A NumPy array of shape [..., 3], where each row
-        represents a Cartesian coordinate (x, y, z).
-
-    Returns:
-        A NumPy array of shape [..., 3], where each row represents a spherical
-        coordinate (r, theta, phi).
-    """
-
-    x, y, z = cartesian_coordinates[..., 0], cartesian_coordinates[..., 1], cartesian_coordinates[..., 2]
-    r = np.linalg.norm(cartesian_coordinates, axis=-1)
-    theta = np.arctan2(y, x)
-    phi = np.arccos(z / r)
-    return np.stack([r, theta, phi], axis=-1)
-
-def get_normal_directions(ball_size: int,ball_ratio: float, theta_ball: float):
-    pos_ndc = create_ndc_grid(ball_size, ball_ratio)
-    pos_ndc = pos_ndc / ball_ratio# scale ndc to [-1,1]
-    pos_cam = theta_ball * pos_ndc  # slide 5, get position
-    # horizontal is currently in [-pi,pi], convert to [0,2pi]
-    pos_cam[...,0] = (pos_cam[...,0] + 2 * np.pi) % (2 * np.pi)
-    
-    phi = pos_cam[...,0] # horizontal
-    theta = pos_cam[...,1] # vertical
-    
-    pos = spherical_to_cartesian(theta, phi) # convert to cartesian coordinate
-    
-    # slide 6 convert to from spherical coordinate to cartesian coordinate
-    # (x-foward, y-right, z-up) #FAILED TO TEST
-
-    return pos
-    
-def get_reflection_directions(I: np.ndarray, N: np.ndarray):
-    """
-    Args:
-        I (np.ndarray): viewing direction #[H,W,3]
-        N (np.ndarray): Normal map #[H,W,3]
-    @return
-        R (np.ndarray): Reflection vector map #[H,W,3]
-    """
-    
-    # R = I - 2((I⋅ N)N) #https://math.stackexchange.com/a/13263
-    dot_product = np.sum(I * N, axis=-1, keepdims=True)  # shape [H, W, 1]
-    R = I - 2 * dot_product * N  # shape [H, W, 3]
-    return R
 
 def get_fov(args, filename):
     new_filename = filename.split('.')[0]+'.npy'
@@ -223,13 +148,6 @@ def get_chromeball_half_angle(fov, ball_ratio):
     # @see https://imgur.com/a/pIeaxmg
     theta = math.atan(math.tan(fov / 2) * ball_ratio)
     return theta
-
-def get_chromeball_distance(theta):
-    # Get chroomeball distance (d) assume chromeball has 1 unit radius
-    # @see https://imgur.com/DJMBhbI
-    inv_theta = np.pi / 2 - theta
-    d = (math.sin(inv_theta) / math.tan(theta)) + math.cos(inv_theta)
-    return d
 
 def get_theta_ball(fov, ball_ratio):
     theta = get_chromeball_half_angle(fov, ball_ratio)
@@ -251,7 +169,10 @@ def process_image(args: argparse.Namespace, file_name: str):
         return None
     
     # get theta ball
-    theta_ball = get_theta_ball(fov, args.ball_ratio)    
+    theta_ball = get_theta_ball(fov, args.ball_ratio)
+    #print("THETA_BALL: ", theta_ball * 180 / np.pi)
+    theta_ball = (180-75) / 180 * np.pi
+    print(theta_ball)
     
     # get environment map
     env_path = os.path.join(args.envmap_dir, file_name)
@@ -265,40 +186,22 @@ def process_image(args: argparse.Namespace, file_name: str):
         #print("FAILED TO READ BBALL")
         return None # failed to read image
     
-    ideal_normalball, mask = get_ideal_normal_ball(args.ball_size) # i just need a mask for a ball.
-    
     # get viewing direction
-    viewing_directions = get_viewing_directions(args.ball_size, args.ball_ratio, fov)   
-
-    # fidning normal map
-    normal_directions = get_normal_directions(args.ball_size, args.ball_ratio, theta_ball)
-
-    # save normal_direction to png file
-    normal_img = normal_directions * 0.5 + 0.5 # convert to [0,1]
-    normal_img = np.clip(normal_img, 0, 1)
-    normal_img = normal_img * mask[...,None] # apply mask)
-    normal_img = skimage.img_as_ubyte(normal_img)
-    skimage.io.imsave(ball_output_path+'_normal.png', normal_img)
+    viewing_directions = get_viewing_direction(args.ball_size, args.ball_ratio, fov)    
     
-    
-    # get reflection direction
-    reflection_directions = get_reflection_directions(viewing_directions, normal_directions)
-
-    spherical_coords = cartesian_to_spherical(reflection_directions)
-    theta_phi = spherical_coords[...,1:]
-    
-
-    # scale to [0, 1]
-    theta_phi[...,0] = (theta_phi[...,0] + np.pi) / (np.pi * 2)
-    # phi is in range [0,pi] 
-    theta_phi[...,1] = theta_phi[...,1] / np.pi
-    
-    # scale to [-1,1]
-    theta_phi= theta_phi * 2 - 1
-
-    
-    pos = theta_phi # remove x axis
-
+    #pos_ndc = create_ndc_grid(args.ball_size, args.ball_ratio)
+    #pos = (theta_ball * pos_ndc) / args.ball_ratio
+    _, mask = get_ideal_normal_ball(args.ball_size) # i just need a mask for a ball.
+    theta_phi = get_ball_theta_phi(args.ball_size, azimuth_limit=theta_ball, elevation_limit=theta_ball)
+    # print(theta_phi[:,128:256,0].min())
+    # print(theta_phi[:,128:256,0].max())
+    # print(theta_phi[:,0:128,0].min())
+    # print(theta_phi[:,0:128,0].max())
+    # exit()
+    pos = theta_phi
+    pos[..., 0] = pos[..., 0] / (2 * np.pi) # scale to [0,1]
+    pos[..., 0] = (pos[..., 0] * 2.0) - 1.0 # scale to [-1,1]
+    pos[..., 1] = pos[..., 1] / ( np.pi / 2) # scale to [-1,1]
     
     # since Z-UP (top 1, bottom -1) but torch grid sample is top -1 bottom 1 (is z-down) we flip only z axis 
     # but if we use for blender rendering, it looking from inside, so it need to flip y axis as well.
@@ -350,8 +253,7 @@ def main(args):
 
     # create partial function for pararell processing
     process_func = partial(process_image, args)
-    # only process first file for debug first
-    process_func(files[0])
+    process_func(files[2])
     exit()
     # pararell processing
     with Pool(args.threads) as p:
