@@ -53,7 +53,7 @@ def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input_copyroom1" ,help='directory that contain the image') 
     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
-    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_256px_v5" ,help='directory to output environment map') #dataset name or directory 
+    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_128px_v14" ,help='directory to output environment map') #dataset name or directory 
     parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
     parser.add_argument("--scale", type=int, default=4, help="scale factor")
@@ -108,7 +108,7 @@ def get_chromeball_distance(theta):
 
 def save_normal(envmap_output_path, normal_directions):
     # save normal map
-    normal_map = spherical_to_cartesian(normal_directions[...,1], normal_directions[...,0]) # [H,W,3] # convert to cartesian coordinate
+    normal_map = spherical_to_cartesian(normal_directions[...,0], normal_directions[...,1]) # [H,W,3] # convert to cartesian coordinate
     normal_map = (normal_map + 1.0) / 2.0
     normal_map = skimage.img_as_ubyte(normal_map)
     skimage.io.imsave(envmap_output_path+'.normal.png', normal_map)
@@ -187,6 +187,82 @@ def cartesian_to_spherical(cartesian_coordinates):
     phi = np.arccos(z / r)
     return np.stack([r, theta, phi], axis=-1)
 
+# def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
+#     """
+#     Using scipy's least square to solve for normal direction
+#     @params
+#         - reflect_direction (np.darray) : reflect vector direction from environment map [H,W,3] in format of [x-forward, y-right, z-up]
+#         - ball_distance (float) : distance to place a unit chromeball
+#     @returns
+#         np.darray: normal_directions  [H,W,3] in format of [x-forward, y-right, z-up]
+#     """
+#     #normal_directions = np.zeros_like(reflect_directions) #H,W,3
+#     H = reflect_directions.shape[0]
+#     W = reflect_directions.shape[1]
+#     normal_directions = np.zeros((H,W,2)) #H,W,2
+    
+#     def make_equations(d, Lx, Ly, Lz):
+#         """ 
+#         Input distance (d) and Reflection vector (L) in 3 direction
+#         Returns a function that computes the equations for least square
+#         @see https://imgur.com/a/2eIaoBb
+#         """
+#         assert d >= 0 # distance (d) is garuntee to be positive.
+        
+#         def equations(variables):
+#             """
+#             Assume the camera is at [0,0,0] the chromeball unit size 1 at [-d,0,0] (we need -d to preserve pyshtool convention)
+#             """
+#             theta, phi = variables  # Unknowns
+#             x, y, z = spherical_to_cartesian(theta, phi) # convert to cartesian
+#             # this x is garuntee to be in [-1,1]. In powerpoint, x can be -9.5 when d is -10. so, we need to shift x value from center at 0 to center at d
+#             x = (-d) + x # (-d) is the center of chromeball. 
+            
+#             S = (x+d) * Lx + y * Ly + z * Lz  # Compute S
+#             denom = np.sqrt(np.clip(x**2 + y**2 + z**2, np.finfo(np.float32).eps, np.inf))  # Common denominator
+
+#             return [
+#                 (2 * S * (x+d)) - Lx + (x / denom), #normal in x axis from given reflect-vector L and assume camera at origin
+#                 (2 * S * y) - Ly + (y / denom), # normal in y axis
+#                 (2 * S * z) - Lz + (z / denom), # normal in z axis
+#                 ((x+d) ** 2 + y ** 2 + z ** 2) - 1,  # (no longer needed, theta and phi are already constrained on the surface) # Added constraint that normal should be on sphere surface 
+#             ]
+#         return equations
+
+#     # compute intial normal from orthographic projection
+#     for i in tqdm(range(reflect_directions.shape[0])):
+#         for j in range(reflect_directions.shape[1]):
+#             Lx, Ly, Lz = reflect_directions[i, j]
+
+#             # Set up and solve least squares for this pixel
+#             equations_func = make_equations(ball_distance, Lx, Ly, Lz)
+#             initial_guess = [0, 0]
+#             result = least_squares(
+#                 equations_func, 
+#                 initial_guess,
+#                 bounds=([
+#                         -np.pi/2, # theta (vertical, lower bound)
+#                         -np.pi/2 # phi (horizontal, lower bound)
+#                     ],[
+#                         np.pi/2, # theta (vertical, upper bound)
+#                         np.pi/2 # phi (horizontal, upper bound)
+#                 ]), # bounds to be front side only
+#                 verbose=0,
+#                 # xtol=1e-12,  # tolerance for solution vector
+#                 # ftol=None,  # tolerance for cost function
+#                 # gtol=None,  # tolerance for gradient
+#                 # max_nfev=10000  # increase if needed
+#             )
+#             # Extract and normalize result
+#             theta, phi = result.x
+
+#             # Store result
+#             normal_directions[i, j, 0] = theta
+#             normal_directions[i, j, 1] = phi
+
+#     return normal_directions
+
+
 def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
     """
     Using scipy's least square to solve for normal direction
@@ -199,12 +275,12 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
     #normal_directions = np.zeros_like(reflect_directions) #H,W,3
     H = reflect_directions.shape[0]
     W = reflect_directions.shape[1]
-    normal_directions = np.zeros((H,W,2)) #H,W,2
+    normal_directions = np.zeros((H,W,3)) #H,W,3
     
     def make_equations(d, Lx, Ly, Lz):
         """ 
         Input distance (d) and Reflection vector (L) in 3 direction
-        Returns a function that computes the equations for given (x, y, z)
+        Returns a function that computes the equations for least square
         @see https://imgur.com/a/2eIaoBb
         """
         assert d >= 0 # distance (d) is garuntee to be positive.
@@ -213,19 +289,23 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
             """
             Assume the camera is at [0,0,0] the chromeball unit size 1 at [-d,0,0] (we need -d to preserve pyshtool convention)
             """
-            theta, phi = variables  # Unknowns
-            x, y, z = spherical_to_cartesian(theta, phi) # convert to cartesian
-            # this x is garuntee to be in [-1,1]. In powerpoint, x can be -9.5 when d is -10. so, we need to shift x value from center at 0 to center at d
-            x = (-d) + x # (-d) is the center of chromeball. 
             
-            # force x to always be positive
+            y,z = variables  # Unknowns
+            x_square = 1 - (y**2) - (z**2)
+            x = np.sqrt(np.clip(x_square,0, np.inf)) # assume that we only optimized for front side of chromeball
+           
+            # this x is garuntee to be in [0,1]. In powerpoint, x can be -9.5 when d is -10. so, we need to shift x value from center at 0 to center at d
+            x = (-d) + x # (-d) is the center of chromeball. 
+ 
             S = (x+d) * Lx + y * Ly + z * Lz  # Compute S
             denom = np.sqrt(np.clip(x**2 + y**2 + z**2, np.finfo(np.float32).eps, np.inf))  # Common denominator
+
             return [
                 (2 * S * (x+d)) - Lx + (x / denom), #normal in x axis from given reflect-vector L and assume camera at origin
                 (2 * S * y) - Ly + (y / denom), # normal in y axis
                 (2 * S * z) - Lz + (z / denom), # normal in z axis
-                #((x+d) ** 2 + y ** 2 + z ** 2) - 1,  # (no longer needed, theta and phi are already constrained on the surface) # Added constraint that normal should be on sphere surface 
+                ((x+d) ** 2 + y ** 2 + z ** 2) - 1,  # Added constraint that normal should be on sphere surface 
+                np.maximum(-x_square, 0) # this is to make sure that x is positive
             ]
         return equations
 
@@ -241,11 +321,11 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
                 equations_func, 
                 initial_guess,
                 bounds=([
-                        -np.pi/2, # theta (vertical, lower bound)
-                        -np.pi/2 # phi (horizontal, lower bound)
+                        -1, # y (horizontal, lower bound)
+                        -1 # z (vertical, lower bound)
                     ],[
-                        np.pi/2, # theta (vertical, upper bound)
-                        np.pi/2 # phi (horizontal, upper bound)
+                        1, # y (horizontal, upper bound)
+                        1 # z (vertical, upper bound)
                 ]), # bounds to be front side only
                 verbose=0,
                 # xtol=1e-12,  # tolerance for solution vector
@@ -254,21 +334,45 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
                 # max_nfev=10000  # increase if needed
             )
             # Extract and normalize result
-            theta, phi = result.x
-
-            # Store result
-            normal_directions[i, j, 0] = phi
-            normal_directions[i, j, 1] = theta
+            y, z = result.x
+            x = np.sqrt(np.clip(1 - (y**2) - (z**2),0, np.inf))
+            normal_directions[i, j, 0] = x
+            normal_directions[i, j, 1] = y
+            normal_directions[i, j, 2] = z
 
     return normal_directions
+
+
+
+
+def get_coordinates_from_normal(normal_spherical, half_ball_angle):
+    # convert from spherical coordinate to cartesian coordinate if needed
+    if normal_spherical.shape[-1] == 2:
+        normal_spherical = spherical_to_cartesian(normal_spherical[...,0], normal_spherical[...,1])
     
-def get_coordinates_from_normal(normal_directions, half_ball_angle):
-    # from normal direction to position for grid sample
-    pos = normal_directions / half_ball_angle # [H,W,2] # the border should only cover to the angle
-    pos = np.clip(pos, -1, 1) # clip to [-1,1]
-    pos = pos * (np.pi / 2) # [H,W,2] # scale to [-pi/2, pi/2] for spherical coordinate
-    pos = spherical_to_cartesian(pos[...,1], pos[...,0]) # [H,W,3] # convert to cartesian coordinate, the border will be [-1,1]
-    pos = pos[...,1:] # [H,W,2] (y-right, z-up)
+    x,y,z = normal_spherical[...,0], normal_spherical[...,1], normal_spherical[...,2]
+    
+    yaw = np.arctan2(y, x) # [-pi, pi]
+
+    pitch = np.arctan2(z, np.sqrt(x**2 + y**2)) # [-pi/2, pi/2]
+    
+    # get boundary 
+    sin_half_ball_angle = np.sin(half_ball_angle) # boundary
+    sin_yaw = np.sin(yaw) # [-1,1]
+    sin_pitch = np.sin(pitch) # [-1,1]
+    
+    # this can go over 1.
+    n_yaw = sin_yaw / sin_half_ball_angle
+    n_pitch = sin_pitch / sin_half_ball_angle
+    
+    pos = np.stack([n_yaw, n_pitch], axis=-1) # [H,W,2] (y-right, z-up)    
+    
+    # clamp to edge of chromeball if beyond the boundary
+    norm = np.linalg.norm(pos, axis=-1, keepdims=True)  # shape: [H, W, 1]
+    too_large = norm >= 1.0
+    pos[too_large[..., 0]] /= norm[too_large[..., 0]]
+
+        
     return pos 
 
 def process_image(args: argparse.Namespace, file_name: str):
@@ -334,8 +438,6 @@ def process_image(args: argparse.Namespace, file_name: str):
         env_map = torch.nn.functional.grid_sample(ball_image, grid, mode='bilinear', padding_mode='border', align_corners=True)
         env_map = env_map[0].permute(1,2,0).numpy()
     
-    # NO longer need mask
-    #env_map = env_map * mask[...,None] + (np.ones_like(env_map) * (1 - mask[..., None])) # apply mask to envmap
 
     env_map_default = skimage.transform.resize(env_map, (args.envmap_height, args.envmap_height*2), anti_aliasing=True)
     if file_name.endswith(".exr"):
