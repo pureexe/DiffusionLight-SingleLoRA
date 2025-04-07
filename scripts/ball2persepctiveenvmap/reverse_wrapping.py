@@ -90,8 +90,7 @@ def get_fov(args, filename):
 def get_chromeball_half_angle(fov, ball_ratio):
     # get how much half angle of chromeball over
     # @see https://imgur.com/a/pIeaxmg
-    #theta = math.atan(math.tan(fov / 2) * ball_ratio)
-    theta = (25.94394085528832 / 2) / 180 * np.pi
+    theta = math.atan(math.tan(fov / 2) * ball_ratio)
     return theta
 
 def get_chromeball_distance(theta):
