@@ -19,6 +19,23 @@ def get_chromeball_distance(fov, ball_ratio=0.25):
     d = (math.sin(inv_theta) / math.tan(theta)) + math.cos(inv_theta)
     return d
 
+def cartesian_to_spherical(cartesian_coordinates):
+    """Converts Cartesian coordinates to spherical coordinates.
+
+    Args:
+        cartesian_coordinates: A NumPy array of shape [..., 3], where each row
+        represents a Cartesian coordinate (x, y, z).
+
+    Returns:
+        A NumPy array of shape [..., 3], where each row represents a spherical
+        coordinate (r, theta, phi).
+    """
+
+    x, y, z = cartesian_coordinates[..., 0], cartesian_coordinates[..., 1], cartesian_coordinates[..., 2]
+    r = np.linalg.norm(cartesian_coordinates, axis=-1)
+    theta = np.arctan2(y, x)
+    phi = np.arccos(z / r)
+    return np.stack([r, theta, phi], axis=-1)
 
 # Settings
 width, height = 1024, 1024
@@ -33,8 +50,8 @@ sphere_center = np.array([-d, 0, 0])
 sphere_radius = 1.0
 
 # Load environment map (assume latitude-longitude format)
-#envmap = imageio.imread('/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid/14n_copyroom_png/dir_11_mip2.exr.png')  # shape (H, W, 3)
-envmap = imageio.imread('/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid/14n_copyroom1_180/dir_0_mip2.exr.png')  # shape (H, W, 3)
+envmap = imageio.imread('/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid/14n_copyroom1_256px_v3/dir_11_mip2.png')  # shape (H, W, 3)
+#envmap = imageio.imread('/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid/14n_copyroom1_256px_v3/dir_11_mip2.png.normal.png')  # shape (H, W, 3)
 env_h, env_w = envmap.shape[:2]
 
 # Helper: normalize
@@ -75,6 +92,7 @@ hit_mask = discriminant > 0
 image = np.zeros((height, width, 3))
 
 # Compute hit points
+
 sqrt_disc = np.sqrt(discriminant[hit_mask])
 t = (-b[hit_mask] - sqrt_disc) / 2
 hit_pos = camera_pos + t[..., None] * dirs[hit_mask]
@@ -88,3 +106,42 @@ image[hit_mask] = color / 255.0  # normalize if 8-bit envmap
 # Save output as PNG
 output_image = (np.clip(image, 0, 1) * 255).astype(np.uint8)
 imageio.imwrite("chromeball_rendering_new_env.png", output_image)
+
+
+# Save output as PNG
+output_image_crop = output_image[384:640, 384:640]  # Crop to 256x256
+imageio.imwrite("chromeball_rendering_new_env_crop.png", output_image_crop)
+
+
+sqrt_disc = np.sqrt(discriminant)
+t = (-b - sqrt_disc) / 2
+hit_pos = camera_pos + t[..., None] * dirs
+normals = normalize(hit_pos - sphere_center)
+
+
+save_normal = normals.copy()
+save_normal = ((normals + 1.0)) / 2.0 
+save_normal = save_normal * hit_mask[..., None]
+# a = cartesian_to_spherical(save_normal[384,512])
+# b = cartesian_to_spherical(save_normal[639,512])
+# theta_a = a[2]
+# theta_b = b[2]
+# print(theta_a * 180 / np.pi)
+# print(theta_b * 180 / np.pi)
+# print("differnet")
+# print(((theta_b - theta_a) / 2) * 180 / np.pi)
+# print("fov:", fov)
+# theta = a[1]
+
+
+# phi = a[2]
+# print(theta * 180 / np.pi)
+# print(phi * 180 / np.pi)
+# exit()
+
+
+
+
+save_normal = save_normal[384:640, 384:640]  # Crop to 256x256
+save_normal = (np.clip(save_normal, 0, 1) * 255).astype(np.uint8)
+imageio.imwrite("chromeball_rendering_new_env_normal_crop.png", save_normal)

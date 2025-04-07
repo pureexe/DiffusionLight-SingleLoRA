@@ -143,7 +143,7 @@ def spherical_to_cartesian(theta, phi):
 
     Parameters:
     theta (numpy.ndarray): Array of theta values in the range [-pi/2, pi/2].
-    phi (numpy.ndarray): Array of phi values in the range [0, 2*pi]. # more like [-pi, pi]
+    phi (numpy.ndarray): Array of phi values in the range [0, 2*pi].
 
     Returns:
     numpy.ndarray: Output array of shape (..., 3), representing unit vectors.

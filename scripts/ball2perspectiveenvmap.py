@@ -168,7 +168,7 @@ def process_image(args: argparse.Namespace, file_name: str):
     # get field of view
     try:
         fov = get_fov(args, npy_name)
-        print("IMAGE FOV: ", fov * 180 / np.pi)
+        #print("IMAGE FOV: ", fov * 180 / np.pi)
         fov = get_chromeballfov_from_fov(fov)
     except:
         return None

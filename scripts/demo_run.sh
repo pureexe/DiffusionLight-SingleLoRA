@@ -93,3 +93,7 @@ python efficient_sh_ball_parallel.py --coeff_dir_template /ist/ist-share/vision/
 
 
 python ball2perspectiveenvmap.py --ball_dir /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/square_hdr_gt --envmap_dir /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/envmap_perspective_v3x2 --fov_dir  /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal --threads 25 --fov_width 512
+
+
+#########################################################
+# CREATE Bshading

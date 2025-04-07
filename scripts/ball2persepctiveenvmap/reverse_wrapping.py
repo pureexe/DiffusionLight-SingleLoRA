@@ -10,7 +10,6 @@ from multiprocessing import Pool
 from functools import partial
 from tqdm.auto import tqdm
 import os
-import shutil
 from tonemapper import TonemapHDR
 from scipy.optimize import root
 from scipy.optimize import least_squares
@@ -33,8 +32,8 @@ def create_envmap_grid(size: int):
     """    
     
     theta = torch.linspace(np.pi / 2, -np.pi / 2, size)
-    #phi = torch.linspace(0, 2*np.pi, size * 2) # need to use [0,2pi] to match pyshtool convention
-    phi = torch.linspace(-np.pi, np.pi, size * 2) # need to use [0,2pi] to match pyshtool convention
+    phi = torch.linspace(0, 2*np.pi, size * 2) # need to use [0,2pi] to match pyshtool convention
+    #phi = torch.linspace(-np.pi, np.pi, size * 2) 
 
     #use indexing 'xy' torch match vision's homework 3
     theta, phi = torch.meshgrid(theta, phi ,indexing='ij')     
@@ -46,9 +45,9 @@ def create_envmap_grid(size: int):
 
 def create_argparser():    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/square_hdr_gt" ,help='directory that contain the image') 
+    parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input_copyroom1" ,help='directory that contain the image') 
     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
-    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_180" ,help='directory to output environment map') #dataset name or directory 
+    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_256px_v4" ,help='directory to output environment map') #dataset name or directory 
     parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
     parser.add_argument("--scale", type=int, default=4, help="scale factor")
@@ -73,7 +72,7 @@ def create_argparser():
 #     parser = argparse.ArgumentParser()
 #     parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input" ,help='directory that contain the image') 
 #     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/focal",help='directory that contain horizontal focal file.') 
-#     parser.add_argument("--envmap_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid" ,help='directory to output environment map') #dataset name or directory 
+#     parser.add_argument("--envmap_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid/ball_grid" ,help='directory to output environment map') #dataset name or directory 
 #     parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
 #     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
 #     parser.add_argument("--scale", type=int, default=4, help="scale factor")
@@ -91,7 +90,8 @@ def get_fov(args, filename):
 def get_chromeball_half_angle(fov, ball_ratio):
     # get how much half angle of chromeball over
     # @see https://imgur.com/a/pIeaxmg
-    theta = math.atan(math.tan(fov / 2) * ball_ratio)
+    #theta = math.atan(math.tan(fov / 2) * ball_ratio)
+    theta = (25.94394085528832 / 2) / 180 * np.pi
     return theta
 
 def get_chromeball_distance(theta):
@@ -101,10 +101,41 @@ def get_chromeball_distance(theta):
     d = (math.sin(inv_theta) / math.tan(theta)) + math.cos(inv_theta)
     return d
 
+def save_normal(envmap_output_path, normal_directions):
+    # save normal map
+    normal_map = spherical_to_cartesian(normal_directions[...,1], normal_directions[...,0]) # [H,W,3] # convert to cartesian coordinate
+    normal_map = (normal_map + 1.0) / 2.0
+    normal_map = skimage.img_as_ubyte(normal_map)
+    skimage.io.imsave(envmap_output_path+'.normal.png', normal_map)
+
+def spherical_to_cartesian(theta, phi):
+    """
+    Converts spherical coordinates (theta, phi) to unit vectors.
+
+    Parameters:
+    theta (numpy.ndarray): Array of theta values in the range [-pi/2, pi/2].
+    phi (numpy.ndarray): Array of phi values in the range [0, 2*pi]. # compatible with [-pi, pi]
+
+    Returns:
+    numpy.ndarray: Output array of shape (..., 3), representing unit vectors.
+    """
+    # Ensure inputs are numpy arrays
+    theta = np.asarray(theta)
+    phi = np.asarray(phi)
+
+    # Calculate components of the unit vectors
+    x = np.cos(theta) * np.cos(phi)
+    y = np.cos(theta) * np.sin(phi)
+    z = np.sin(theta)
+
+    # Stack components into output array
+    vectors = np.stack([x, y, z], axis=-1)
+
+    return vectors
 
 def get_cartesian_from_spherical(theta: np.array, phi: np.array, r = 1.0):
     """
-    BLENDER CONVENSION
+    x-forward, y-right, z-uup
     theta: vertical angle
     phi: horizontal angle
     r: radius
@@ -123,7 +154,35 @@ def get_rand_normal_vector():
     x_value = np.sqrt(np.clip(1 - (rand_value[0]**2) - (rand_value[1]**2),0, np.inf))
     return x_value, rand_value[0], rand_value[1]
 
-def solve_for_normal(reflect_directions, ball_distance):
+def get_normal_vector(incoming_vector: np.ndarray, reflect_vector: np.ndarray):
+    """
+    BLENDER CONVENSION
+    incoming_vector: the vector from the point to the camera
+    reflect_vector: the vector from the point to the light source
+    """
+    #N = 2(R ⋅ I)R - I
+    N = (incoming_vector + reflect_vector) / np.linalg.norm(incoming_vector + reflect_vector, axis=-1, keepdims=True)
+    return N
+
+def cartesian_to_spherical(cartesian_coordinates):
+    """Converts Cartesian coordinates to spherical coordinates.
+
+    Args:
+        cartesian_coordinates: A NumPy array of shape [..., 3], where each row
+        represents a Cartesian coordinate (x, y, z).
+
+    Returns:
+        A NumPy array of shape [..., 3], where each row represents a spherical
+        coordinate (r, theta, phi).
+    """
+
+    x, y, z = cartesian_coordinates[..., 0], cartesian_coordinates[..., 1], cartesian_coordinates[..., 2]
+    r = np.linalg.norm(cartesian_coordinates, axis=-1)
+    theta = np.arctan2(y, x)
+    phi = np.arccos(z / r)
+    return np.stack([r, theta, phi], axis=-1)
+
+def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
     """
     Using scipy's least square to solve for normal direction
     @params
@@ -132,84 +191,83 @@ def solve_for_normal(reflect_directions, ball_distance):
     @returns
         np.darray: normal_directions  [H,W,3] in format of [x-forward, y-right, z-up]
     """
-    normal_directions = np.zeros_like(reflect_directions) #H,W,3
+    #normal_directions = np.zeros_like(reflect_directions) #H,W,3
+    H = reflect_directions.shape[0]
+    W = reflect_directions.shape[1]
+    normal_directions = np.zeros((H,W,2)) #H,W,2
     
-    # def make_equations(d, Lx, Ly, Lz):
-    #     """ 
-    #     Input distance (d) and Reflection vector (L) in 3 direction
-    #     Returns a function that computes the equations for given (x, y, z)
-    #     """
-    #     def equations(variables):
-    #         """
-    #         Assume the camera is at [0,0,0] the chromeball unit size 1 at [-d,0,0] (we need -d to preserve pyshtool convention)
-    #         """
-    #         x, y, z = variables  # Unknowns
-    #         S = (x + d) * Lx + y * Ly + z * Lz  # Compute S
-    #         denom = np.sqrt(np.clip(x**2 + y**2 + z**2, 0, np.inf))  # Common denominator
-    #         return [
-    #             2 * S * (x + d) - Lx + (x / denom), #normal in x axis from given reflect-vector L and assume camera at origin
-    #             2 * S * y - Ly + (y / denom), # normal in y axis
-    #             2 * S * z - Lz + (z / denom), # normal in z axis
-    #             (x + d) ** 2 + y ** 2 + z ** 2 - 1,  # Added constraint that normal should be on sphere surface 
-    #             #np.clip((x + d), 0, np.inf) # Enforce x to be negative?
-    #         ]
-    #     return equations
-
     def make_equations(d, Lx, Ly, Lz):
         """ 
         Input distance (d) and Reflection vector (L) in 3 direction
         Returns a function that computes the equations for given (x, y, z)
         """
+    
         def equations(variables):
             """
             Assume the camera is at [0,0,0] the chromeball unit size 1 at [-d,0,0] (we need -d to preserve pyshtool convention)
             """
-            x, y, z = variables  # Unknowns
+            theta, phi = variables  # Unknowns
+            x, y, z = spherical_to_cartesian(theta, phi) # convert to cartesian
+
             # force x to always be positive
-            # scale from [-1,1] to [0,1]
-            S = (x) * Lx + y * Ly + z * Lz  # Compute S
-            denom = np.sqrt(np.clip((x-d)**2 + y**2 + z**2, 0, np.inf))  # Common denominator
+            S = x * Lx + y * Ly + z * Lz  # Compute S
+            denom = np.sqrt(np.clip((x-d)**2 + y**2 + z**2, np.finfo(np.float32).eps, np.inf))  # Common denominator
             return [
-                2 * S * (x) - Lx + ((x-d) / denom), #normal in x axis from given reflect-vector L and assume camera at origin
-                2 * S * y - Ly + (y / denom), # normal in y axis
-                2 * S * z - Lz + (z / denom), # normal in z axis
-                (x) ** 2 + y ** 2 + z ** 2 - 1,  # Added constraint that normal should be on sphere surface 
+                (2 * S * x) - Lx + ((x-d) / denom), #normal in x axis from given reflect-vector L and assume camera at origin
+                (2 * S * y) - Ly + (y / denom), # normal in y axis
+                (2 * S * z) - Lz + (z / denom), # normal in z axis
+                #(x ** 2 + y ** 2 + z ** 2) - 1,  # (no longer needed, theta and phi are already constrained on the surface) # Added constraint that normal should be on sphere surface 
             ]
         return equations
 
-    
-    mask = np.zeros_like(reflect_directions[...,0])
+    # compute intial normal from orthographic projection
     for i in tqdm(range(reflect_directions.shape[0])):
         for j in range(reflect_directions.shape[1]):
             Lx, Ly, Lz = reflect_directions[i, j]
 
+            
+
             # Set up and solve least squares for this pixel
             equations_func = make_equations(ball_distance, Lx, Ly, Lz)
-            initial_guess = [1, 0, 0]
-            
+            initial_guess = [0, 0]
             result = least_squares(
                 equations_func, 
                 initial_guess,
-                bounds=([0, -1, -1], [1, 1, 1]), # bounds for x,y,z
+                bounds=([
+                        -np.pi/2, # theta (vertical, lower bound)
+                        -np.pi/2 # phi (horizontal, lower bound)
+                    ],[
+                        np.pi/2, # theta (vertical, upper bound)
+                        np.pi/2 # phi (horizontal, upper bound)
+                ]), # bounds to be front side only
+                verbose=0,
+                # xtol=1e-12,  # tolerance for solution vector
+                # ftol=None,  # tolerance for cost function
+                # gtol=None,  # tolerance for gradient
+                # max_nfev=10000  # increase if needed
             )
-            
             # Extract and normalize result
-            x, y, z = result.x
-            #x = (x + 1) / 2 # rescale to match the enforce range
-            normal_vec = np.array([ x, y, z])
-            normal_vec = normal_vec / np.linalg.norm(normal_vec)
-            mask[i,j] =  x >= 0 
+            theta, phi = result.x
 
             # Store result
-            normal_directions[i, j] = normal_vec
+            normal_directions[i, j, 0] = phi
+            normal_directions[i, j, 1] = theta
 
-    return normal_directions, mask
+    return normal_directions
     
-
+def get_coordinates_from_normal(normal_directions, half_ball_angle):
+    # from normal direction to position for grid sample
+    pos = normal_directions / half_ball_angle # [H,W,2] # the border should only cover to the angle
+    pos = np.clip(pos, -1, 1) # clip to [-1,1]
+    pos = pos * (np.pi / 2) # [H,W,2] # scale to [-pi/2, pi/2] for spherical coordinate
+    pos = spherical_to_cartesian(pos[...,1], pos[...,0]) # [H,W,3] # convert to cartesian coordinate, the border will be [-1,1]
+    pos = pos[...,1:] # [H,W,2] (y-right, z-up)
+    return pos 
 
 def process_image(args: argparse.Namespace, file_name: str):
     # check if exist, skip!
     envmap_output_path = os.path.join(args.envmap_dir, file_name)
+    # TODO: TEMPORARY DISTABLE, will reenable after fixing the bug
     # if os.path.exists(envmap_output_path):
     #     return None
 
@@ -237,22 +295,22 @@ def process_image(args: argparse.Namespace, file_name: str):
     env_grid  = create_envmap_grid(args.envmap_height )   # * args.scale # [phi [0,2pi], theta [pi/2, -pi/2]]
     theta, phi = env_grid[...,0], env_grid[...,1]
     reflect_directions = get_cartesian_from_spherical(theta, phi) # (x-forward, y-right, z-up) range [-1,1]
+    
+    # compute the angle
     half_angle = get_chromeball_half_angle(fov,args.ball_ratio)
+    half_ball_angle = np.pi/2 - half_angle    
     ball_distance = get_chromeball_distance(half_angle)
-    normal_directions, mask = solve_for_normal(reflect_directions, ball_distance)
+
+    # solving for normal
+    normal_directions = solve_for_normal(reflect_directions, ball_distance, half_ball_angle)
+    save_normal(envmap_output_path, normal_directions)
     
-    # save normal map
-    normal_map = (normal_directions + 1.0) / 2.0
-    normal_map = skimage.img_as_ubyte(normal_directions)
-    skimage.io.imsave(envmap_output_path+'.normal.png', normal_map)
-    
-    # We ignore X axis because it represent forward. (y-right, z-up) range [-1,1]
-    y,z = normal_directions[...,1], normal_directions[...,2] # we use normal too indicate location on the chromeball.
-    pos = np.concatenate([y[...,None],z[...,None]], axis=-1)
+    # get coordinate to sample from normal 
+    pos = get_coordinates_from_normal(normal_directions, half_ball_angle) # [H,W,2] (y-right, z-up)
     
     # since Z-UP (top 1, bottom -1) but torch grid sample is top -1 bottom 1 (is z-down) we flip only z axis 
     # but if we use for blender rendering, it looking from inside, so it need to flip y axis as well.
-    LOOKING_FROM_INSIDE = False 
+    LOOKING_FROM_INSIDE = False
     if LOOKING_FROM_INSIDE:
         pos  = -pos
     else:
@@ -266,12 +324,12 @@ def process_image(args: argparse.Namespace, file_name: str):
         ball_image = torch.from_numpy(ball_image[None]).float()
         ball_image = ball_image.permute(0,3,1,2) # [1,3,H,W]
         
-        env_map = torch.nn.functional.grid_sample(ball_image, grid, mode='bilinear', padding_mode='border', align_corners=False)
+        env_map = torch.nn.functional.grid_sample(ball_image, grid, mode='bilinear', padding_mode='border', align_corners=True)
         env_map = env_map[0].permute(1,2,0).numpy()
-        
+    
+    # NO longer need mask
     #env_map = env_map * mask[...,None] + (np.ones_like(env_map) * (1 - mask[..., None])) # apply mask to envmap
 
-    # TODO: apply mask for in-visible region
     env_map_default = skimage.transform.resize(env_map, (args.envmap_height, args.envmap_height*2), anti_aliasing=True)
     if file_name.endswith(".exr"):
         ezexr.imwrite(envmap_output_path, env_map_default.astype(np.float32))
@@ -302,10 +360,7 @@ def main(args):
 
     # create partial function for pararell processing
     process_func = partial(process_image, args)
-    
-    process_func(files[2])
-    exit()
-    
+        
     # pararell processing
     with Pool(args.threads) as p:
         list(tqdm(p.imap(process_func, files), total=len(files)))
