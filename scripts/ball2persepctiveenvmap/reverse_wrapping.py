@@ -108,8 +108,10 @@ def get_chromeball_distance(theta):
 
 def save_normal(envmap_output_path, normal_directions):
     # save normal map
-    normal_map = spherical_to_cartesian(normal_directions[...,0], normal_directions[...,1]) # [H,W,3] # convert to cartesian coordinate
-    normal_map = (normal_map + 1.0) / 2.0
+    if normal_directions.shape[-1] == 2:
+        # convert to spherical coordinate
+        normal_directions = cartesian_to_spherical(normal_directions[...,0], normal_directions[...,1] )
+    normal_map = (normal_directions + 1.0) / 2.0
     normal_map = skimage.img_as_ubyte(normal_map)
     skimage.io.imsave(envmap_output_path+'.normal.png', normal_map)
 
@@ -345,12 +347,12 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
 
 
 
-def get_coordinates_from_normal(normal_spherical, half_ball_angle):
+def get_coordinates_from_normal(normals, half_ball_angle):
     # convert from spherical coordinate to cartesian coordinate if needed
-    if normal_spherical.shape[-1] == 2:
-        normal_spherical = spherical_to_cartesian(normal_spherical[...,0], normal_spherical[...,1])
+    if normals.shape[-1] == 2:
+        normals = spherical_to_cartesian(normals[...,0], normal_spherical[...,1])
     
-    x,y,z = normal_spherical[...,0], normal_spherical[...,1], normal_spherical[...,2]
+    x,y,z = normals[...,0], normals[...,1], normals[...,2]
     
     yaw = np.arctan2(y, x) # [-pi, pi]
 
