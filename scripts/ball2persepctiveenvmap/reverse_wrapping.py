@@ -1,5 +1,6 @@
 # reverse wrapping is for chaning from chromeball to environment map 
 
+print("LOADING LIBRARY")
 import numpy as np
 from PIL import Image
 import skimage
@@ -21,7 +22,10 @@ try:
 except:
     pass
 
+print("LIBRARY DONE")
+
 VIZ_TONEMAP = True
+USE_PYTHON_RENDER = True
 
 def create_envmap_grid(size: int):
     """
@@ -32,8 +36,10 @@ def create_envmap_grid(size: int):
     """    
     
     theta = torch.linspace(np.pi / 2, -np.pi / 2, size)
-    phi = torch.linspace(0, 2*np.pi, size * 2) # need to use [0,2pi] to match pyshtool convention
-    #phi = torch.linspace(-np.pi, np.pi, size * 2) 
+    if USE_PYTHON_RENDER:
+        phi = torch.linspace(-np.pi, np.pi, size * 2) # in python render, we use [-pi,pi]
+    else:
+        phi = torch.linspace(0, 2*np.pi, size * 2) # need to use [0,2pi] to match pyshtool convention
 
     #use indexing 'xy' torch match vision's homework 3
     theta, phi = torch.meshgrid(theta, phi ,indexing='ij')     
@@ -47,7 +53,7 @@ def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input_copyroom1" ,help='directory that contain the image') 
     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
-    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_256px_v4" ,help='directory to output environment map') #dataset name or directory 
+    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_256px_v5" ,help='directory to output environment map') #dataset name or directory 
     parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
     parser.add_argument("--scale", type=int, default=4, help="scale factor")
@@ -199,23 +205,27 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
         """ 
         Input distance (d) and Reflection vector (L) in 3 direction
         Returns a function that computes the equations for given (x, y, z)
+        @see https://imgur.com/a/2eIaoBb
         """
-    
+        assert d >= 0 # distance (d) is garuntee to be positive.
+        
         def equations(variables):
             """
             Assume the camera is at [0,0,0] the chromeball unit size 1 at [-d,0,0] (we need -d to preserve pyshtool convention)
             """
             theta, phi = variables  # Unknowns
             x, y, z = spherical_to_cartesian(theta, phi) # convert to cartesian
-
+            # this x is garuntee to be in [-1,1]. In powerpoint, x can be -9.5 when d is -10. so, we need to shift x value from center at 0 to center at d
+            x = (-d) + x # (-d) is the center of chromeball. 
+            
             # force x to always be positive
-            S = x * Lx + y * Ly + z * Lz  # Compute S
-            denom = np.sqrt(np.clip((x-d)**2 + y**2 + z**2, np.finfo(np.float32).eps, np.inf))  # Common denominator
+            S = (x+d) * Lx + y * Ly + z * Lz  # Compute S
+            denom = np.sqrt(np.clip(x**2 + y**2 + z**2, np.finfo(np.float32).eps, np.inf))  # Common denominator
             return [
-                (2 * S * x) - Lx + ((x-d) / denom), #normal in x axis from given reflect-vector L and assume camera at origin
+                (2 * S * (x+d)) - Lx + (x / denom), #normal in x axis from given reflect-vector L and assume camera at origin
                 (2 * S * y) - Ly + (y / denom), # normal in y axis
                 (2 * S * z) - Lz + (z / denom), # normal in z axis
-                #(x ** 2 + y ** 2 + z ** 2) - 1,  # (no longer needed, theta and phi are already constrained on the surface) # Added constraint that normal should be on sphere surface 
+                #((x+d) ** 2 + y ** 2 + z ** 2) - 1,  # (no longer needed, theta and phi are already constrained on the surface) # Added constraint that normal should be on sphere surface 
             ]
         return equations
 
@@ -223,8 +233,6 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
     for i in tqdm(range(reflect_directions.shape[0])):
         for j in range(reflect_directions.shape[1]):
             Lx, Ly, Lz = reflect_directions[i, j]
-
-            
 
             # Set up and solve least squares for this pixel
             equations_func = make_equations(ball_distance, Lx, Ly, Lz)
@@ -359,6 +367,9 @@ def main(args):
 
     # create partial function for pararell processing
     process_func = partial(process_image, args)
+    
+    process_func(files[0])
+    exit()
         
     # pararell processing
     with Pool(args.threads) as p:
