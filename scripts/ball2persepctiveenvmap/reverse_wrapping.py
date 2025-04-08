@@ -31,15 +31,30 @@ def create_envmap_grid(size: int):
     """
     PYSHTOOL CONVENTION (x-forward, y-right, z-up)
     Create the grid of environment map that contain the position in sperical coordinate
+    We need a proper supprot for the align_corner
     # Top left is (theta=-0.5,phi=-1) and bottom right is (theta=0.5, phi=1)
     Top left is (theta=-pi/2,phi=-pi) and bottom right is (theta=pi/2, phi=pi)
     """    
+    # create theta
+    theta = torch.arange(0, size) # [0,size-1] # this value will act as a middle pixel is on the edge, but in the environment map we need corner to be the edge
+    theta = (theta + 0.5) / size # [0.5 / size, size - 0.5 / size]
+    # rescale from [0,1] to [-pi/2, pi/2]
+    theta = theta * np.pi - (np.pi / 2) # [0,1] to [-pi/2, pi/2]
+    # flip the value from [-pi/2,pi/2] to [pi/2,-pi/2]
+    theta = torch.flip(theta, dims=[0]) # flip the value from [0,1] to [1,0]   
     
-    theta = torch.linspace(np.pi / 2, -np.pi / 2, size)
+    # create phi
+    phi = torch.arange(0, size * 2) # [0,size-1] # this value will act as a middle pixel is on the edge, but in the environment map we need corner to be the edge
+    phi = (phi + 0.5) / (size * 2) # [0.5 / (size * 2), (size * 2) - 0.5 / (size * 2)]
+    
     if USE_PYTHON_RENDER:
-        phi = torch.linspace(-np.pi, np.pi, size * 2) # in python render, we use [-pi,pi]
+        # python code / blender convention use -pi to pi
+        # rescale from [0,1] to [-pi, pi]
+        phi = phi * (2 * np.pi) - np.pi # [0,1] to [-pi, pi]
     else:
-        phi = torch.linspace(0, 2*np.pi, size * 2) # need to use [0,2pi] to match pyshtool convention
+        # pyshtool convention use 0 to 2pi
+        # rescale from [0,1] to [0,2pi]
+        phi = phi * (2 * np.pi) # [0,1] to [0,2pi]
 
     #use indexing 'xy' torch match vision's homework 3
     theta, phi = torch.meshgrid(theta, phi ,indexing='ij')     
@@ -53,8 +68,8 @@ def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input_copyroom1" ,help='directory that contain the image') 
     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
-    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_128px_v17" ,help='directory to output environment map') #dataset name or directory 
-    parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
+    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_256s4_v1" ,help='directory to output environment map') #dataset name or directory 
+    parser.add_argument("--envmap_height", type=int, default=256, help="size of the environment map height in pixel (height)")
     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
     parser.add_argument("--scale", type=int, default=4, help="scale factor")
     parser.add_argument("--fov_width", type=int, default=512, help="size of image to calcurate focal")
@@ -393,7 +408,7 @@ def process_image(args: argparse.Namespace, file_name: str):
         return None
     
     # get reflect vector for environment map
-    env_grid  = create_envmap_grid(args.envmap_height )   # * args.scale # [phi [0,2pi], theta [pi/2, -pi/2]]
+    env_grid  = create_envmap_grid(args.envmap_height * args.scale)   # * args.scale # [phi [0,2pi], theta [pi/2, -pi/2]]
     theta, phi = env_grid[...,0], env_grid[...,1]
     reflect_directions = get_cartesian_from_spherical(theta, phi) # (x-forward, y-right, z-up) range [-1,1]
     
@@ -426,11 +441,12 @@ def process_image(args: argparse.Namespace, file_name: str):
         ball_image = torch.from_numpy(ball_image[None]).float()
         ball_image = ball_image.permute(0,3,1,2) # [1,3,H,W]
         
-        env_map = torch.nn.functional.grid_sample(ball_image, grid, mode='bilinear', padding_mode='border', align_corners=True)
+        env_map = torch.nn.functional.grid_sample(ball_image, grid, mode='bilinear', padding_mode='border', align_corners=False)
         env_map = env_map[0].permute(1,2,0).numpy()
     
     # save image
     env_map_default = skimage.transform.resize(env_map, (args.envmap_height, args.envmap_height*2), anti_aliasing=True)
+    env_map_default = env_map
     if file_name.endswith(".exr"):
         ezexr.imwrite(envmap_output_path, env_map_default.astype(np.float32))
         if VIZ_TONEMAP:
