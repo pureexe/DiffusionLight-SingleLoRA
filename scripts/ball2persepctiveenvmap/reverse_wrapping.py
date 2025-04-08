@@ -204,82 +204,6 @@ def cartesian_to_spherical(cartesian_coordinates):
     phi = np.arccos(z / r)
     return np.stack([r, theta, phi], axis=-1)
 
-# def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
-#     """
-#     Using scipy's least square to solve for normal direction
-#     @params
-#         - reflect_direction (np.darray) : reflect vector direction from environment map [H,W,3] in format of [x-forward, y-right, z-up]
-#         - ball_distance (float) : distance to place a unit chromeball
-#     @returns
-#         np.darray: normal_directions  [H,W,3] in format of [x-forward, y-right, z-up]
-#     """
-#     #normal_directions = np.zeros_like(reflect_directions) #H,W,3
-#     H = reflect_directions.shape[0]
-#     W = reflect_directions.shape[1]
-#     normal_directions = np.zeros((H,W,2)) #H,W,2
-    
-#     def make_equations(d, Lx, Ly, Lz):
-#         """ 
-#         Input distance (d) and Reflection vector (L) in 3 direction
-#         Returns a function that computes the equations for least square
-#         @see https://imgur.com/a/2eIaoBb
-#         """
-#         assert d >= 0 # distance (d) is garuntee to be positive.
-        
-#         def equations(variables):
-#             """
-#             Assume the camera is at [0,0,0] the chromeball unit size 1 at [-d,0,0] (we need -d to preserve pyshtool convention)
-#             """
-#             theta, phi = variables  # Unknowns
-#             x, y, z = spherical_to_cartesian(theta, phi) # convert to cartesian
-#             # this x is garuntee to be in [-1,1]. In powerpoint, x can be -9.5 when d is -10. so, we need to shift x value from center at 0 to center at d
-#             x = (-d) + x # (-d) is the center of chromeball. 
-            
-#             S = (x+d) * Lx + y * Ly + z * Lz  # Compute S
-#             denom = np.sqrt(np.clip(x**2 + y**2 + z**2, np.finfo(np.float32).eps, np.inf))  # Common denominator
-
-#             return [
-#                 (2 * S * (x+d)) - Lx + (x / denom), #normal in x axis from given reflect-vector L and assume camera at origin
-#                 (2 * S * y) - Ly + (y / denom), # normal in y axis
-#                 (2 * S * z) - Lz + (z / denom), # normal in z axis
-#                 ((x+d) ** 2 + y ** 2 + z ** 2) - 1,  # (no longer needed, theta and phi are already constrained on the surface) # Added constraint that normal should be on sphere surface 
-#             ]
-#         return equations
-
-#     # compute intial normal from orthographic projection
-#     for i in tqdm(range(reflect_directions.shape[0])):
-#         for j in range(reflect_directions.shape[1]):
-#             Lx, Ly, Lz = reflect_directions[i, j]
-
-#             # Set up and solve least squares for this pixel
-#             equations_func = make_equations(ball_distance, Lx, Ly, Lz)
-#             initial_guess = [0, 0]
-#             result = least_squares(
-#                 equations_func, 
-#                 initial_guess,
-#                 bounds=([
-#                         -np.pi/2, # theta (vertical, lower bound)
-#                         -np.pi/2 # phi (horizontal, lower bound)
-#                     ],[
-#                         np.pi/2, # theta (vertical, upper bound)
-#                         np.pi/2 # phi (horizontal, upper bound)
-#                 ]), # bounds to be front side only
-#                 verbose=0,
-#                 # xtol=1e-12,  # tolerance for solution vector
-#                 # ftol=None,  # tolerance for cost function
-#                 # gtol=None,  # tolerance for gradient
-#                 # max_nfev=10000  # increase if needed
-#             )
-#             # Extract and normalize result
-#             theta, phi = result.x
-
-#             # Store result
-#             normal_directions[i, j, 0] = theta
-#             normal_directions[i, j, 1] = phi
-
-#     return normal_directions
-
-
 def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
     """
     Using scipy's least square to solve for normal direction
@@ -419,7 +343,6 @@ def process_image(args: argparse.Namespace, file_name: str):
 
     # solving for normal
     normal_directions = solve_for_normal(reflect_directions, ball_distance, half_ball_angle)
-    save_normal(envmap_output_path, normal_directions)
     
     # get coordinate to sample from normal 
     pos = get_coordinates_from_normal(normal_directions, half_angle, ball_distance) # [H,W,2] (y-right, z-up)
