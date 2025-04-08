@@ -53,7 +53,7 @@ def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input_copyroom1" ,help='directory that contain the image') 
     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
-    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_128px_v14" ,help='directory to output environment map') #dataset name or directory 
+    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_128px_v17" ,help='directory to output environment map') #dataset name or directory 
     parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
     parser.add_argument("--scale", type=int, default=4, help="scale factor")
@@ -274,7 +274,6 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
     @returns
         np.darray: normal_directions  [H,W,3] in format of [x-forward, y-right, z-up]
     """
-    #normal_directions = np.zeros_like(reflect_directions) #H,W,3
     H = reflect_directions.shape[0]
     W = reflect_directions.shape[1]
     normal_directions = np.zeros((H,W,3)) #H,W,3
@@ -345,37 +344,26 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
     return normal_directions
 
 
-
-
-def get_coordinates_from_normal(normals, half_ball_angle):
+def get_coordinates_from_normal(normals, half_angle, ball_distance):
     # convert from spherical coordinate to cartesian coordinate if needed
     if normals.shape[-1] == 2:
         normals = spherical_to_cartesian(normals[...,0], normal_spherical[...,1])
     
     x,y,z = normals[...,0], normals[...,1], normals[...,2]
     
-    yaw = np.arctan2(y, x) # [-pi, pi]
+    # x is now in [-1,1] but we need to shift it to ball center at -d
+    x = (-ball_distance) + x # (-d) is the center of chromeball.
+    
+    f = 1 / math.tan(half_angle) # f is the focal length
 
-    pitch = np.arctan2(z, np.sqrt(x**2 + y**2)) # [-pi/2, pi/2]
+    # since all point is in -x and camera looking to -z. the camera plane  at focal length (f) will be at -f
+    u = y * -f / x # [H,W]
+    v = z * -f / x # [H,W]
     
-    # get boundary 
-    sin_half_ball_angle = np.sin(half_ball_angle) # boundary
-    sin_yaw = np.sin(yaw) # [-1,1]
-    sin_pitch = np.sin(pitch) # [-1,1]
-    
-    # this can go over 1.
-    n_yaw = sin_yaw / sin_half_ball_angle
-    n_pitch = sin_pitch / sin_half_ball_angle
-    
-    pos = np.stack([n_yaw, n_pitch], axis=-1) # [H,W,2] (y-right, z-up)    
-    
-    # clamp to edge of chromeball if beyond the boundary
-    norm = np.linalg.norm(pos, axis=-1, keepdims=True)  # shape: [H, W, 1]
-    too_large = norm >= 1.0
-    pos[too_large[..., 0]] /= norm[too_large[..., 0]]
-
+    pos = np.stack([u, v], axis=-1) # [H,W,2] (y-right, z-up)    
         
     return pos 
+
 
 def process_image(args: argparse.Namespace, file_name: str):
     # check if exist, skip!
@@ -419,7 +407,7 @@ def process_image(args: argparse.Namespace, file_name: str):
     save_normal(envmap_output_path, normal_directions)
     
     # get coordinate to sample from normal 
-    pos = get_coordinates_from_normal(normal_directions, half_ball_angle) # [H,W,2] (y-right, z-up)
+    pos = get_coordinates_from_normal(normal_directions, half_angle, ball_distance) # [H,W,2] (y-right, z-up)
     
     # since Z-UP (top 1, bottom -1) but torch grid sample is top -1 bottom 1 (is z-down) we flip only z axis 
     # but if we use for blender rendering, it looking from inside, so it need to flip y axis as well.
@@ -433,6 +421,7 @@ def process_image(args: argparse.Namespace, file_name: str):
     with torch.no_grad():
         # convert position to pytorch grid look up
         grid = torch.from_numpy(pos)[None].float()
+        
         # convert ball to support pytorch
         ball_image = torch.from_numpy(ball_image[None]).float()
         ball_image = ball_image.permute(0,3,1,2) # [1,3,H,W]
@@ -440,7 +429,7 @@ def process_image(args: argparse.Namespace, file_name: str):
         env_map = torch.nn.functional.grid_sample(ball_image, grid, mode='bilinear', padding_mode='border', align_corners=True)
         env_map = env_map[0].permute(1,2,0).numpy()
     
-
+    # save image
     env_map_default = skimage.transform.resize(env_map, (args.envmap_height, args.envmap_height*2), anti_aliasing=True)
     if file_name.endswith(".exr"):
         ezexr.imwrite(envmap_output_path, env_map_default.astype(np.float32))
