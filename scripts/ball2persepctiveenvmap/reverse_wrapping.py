@@ -1,6 +1,5 @@
 # reverse wrapping is for chaning from chromeball to environment map 
 
-print("LOADING LIBRARY")
 import numpy as np
 from PIL import Image
 import skimage
@@ -22,10 +21,10 @@ try:
 except:
     pass
 
-print("LIBRARY DONE")
 
-VIZ_TONEMAP = True
-USE_PYTHON_RENDER = True
+VIZ_TONEMAP = False
+USE_PYTHON_RENDER = False
+LOOKING_FROM_INSIDE = False
 
 def create_envmap_grid(size: int):
     """
@@ -66,40 +65,21 @@ def create_envmap_grid(size: int):
 
 def create_argparser():    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input_copyroom1" ,help='directory that contain the image') 
-    parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
-    parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_256s4_v1" ,help='directory to output environment map') #dataset name or directory 
+    # 
+    #parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input_copyroom1" ,help='directory that contain the image') 
+    # parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input_copyroom1_exr" ,help='directory that contain the image') 
+    # parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
+    # parser.add_argument("--envmap_dir", type=str, default="output/envmap_grid/14n_copyroom1_256s4_v3" ,help='directory to output environment map') #dataset name or directory 
+    parser.add_argument("--ball_dir", type=str, required=True ,help='directory that contain the image') 
+    parser.add_argument("--focal_dir", type=str, required=True ,help='directory that contain horizontal focal file.') 
+    parser.add_argument("--envmap_dir", type=str, required=True ,help='directory to output environment map') #dataset name or directory 
+
     parser.add_argument("--envmap_height", type=int, default=256, help="size of the environment map height in pixel (height)")
     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
-    parser.add_argument("--scale", type=int, default=4, help="scale factor")
+    parser.add_argument("--scale", type=int, default=1, help="scale factor")
     parser.add_argument("--fov_width", type=int, default=512, help="size of image to calcurate focal")
-    parser.add_argument("--threads", type=int, default=25, help="num thread for pararell processing")
+    parser.add_argument("--threads", type=int, default=8, help="num thread for pararell processing")
     return parser
-
-
-# def create_argparser():    
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/square_hdr_gt" ,help='directory that contain the image') 
-#     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal",help='directory that contain horizontal focal file.') 
-#     parser.add_argument("--envmap_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/envmap" ,help='directory to output environment map') #dataset name or directory 
-#     parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
-#     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
-#     parser.add_argument("--scale", type=int, default=4, help="scale factor")
-#     parser.add_argument("--fov_width", type=int, default=512, help="size of image to calcurate focal")
-#     parser.add_argument("--threads", type=int, default=25, help="num thread for pararell processing")
-#     return parser
-
-# def create_argparser():    
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("--ball_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/input" ,help='directory that contain the image') 
-#     parser.add_argument("--focal_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/focal",help='directory that contain horizontal focal file.') 
-#     parser.add_argument("--envmap_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid/ball_grid" ,help='directory to output environment map') #dataset name or directory 
-#     parser.add_argument("--envmap_height", type=int, default=128, help="size of the environment map height in pixel (height)")
-#     parser.add_argument("--ball_ratio", type=float, default=128 / 512, help="size of the environment map height in pixel (height)")
-#     parser.add_argument("--scale", type=int, default=4, help="scale factor")
-#     parser.add_argument("--fov_width", type=int, default=512, help="size of image to calcurate focal")
-#     parser.add_argument("--threads", type=int, default=25, help="num thread for pararell processing")
-#     return parser
 
 def get_fov(args, filename):
     new_filename = filename.split('.')[0]+'.npy'
@@ -128,7 +108,7 @@ def save_normal(envmap_output_path, normal_directions):
         normal_directions = cartesian_to_spherical(normal_directions[...,0], normal_directions[...,1] )
     normal_map = (normal_directions + 1.0) / 2.0
     normal_map = skimage.img_as_ubyte(normal_map)
-    skimage.io.imsave(envmap_output_path+'.normal.png', normal_map)
+    skimage.io.imsave(envmap_output_path+'.normal.png', normal_map)    
 
 def spherical_to_cartesian(theta, phi):
     """
@@ -204,6 +184,67 @@ def cartesian_to_spherical(cartesian_coordinates):
     phi = np.arccos(z / r)
     return np.stack([r, theta, phi], axis=-1)
 
+def solve_for_normal_pytorch(reflect_directions, ball_distance, half_ball_angle, max_iter=10000, xtol=1e-2):
+    """
+    Using pytorch adam to solve for normal direction
+    @params
+        - reflect_direction (np.darray) : reflect vector direction from environment map [H,W,3] in format of [x-forward, y-right, z-up]
+        - ball_distance (float) : distance to place a unit chromeball
+    @returns
+        np.darray: normal_directions  [H,W,3] in format of [x-forward, y-right, z-up]
+    """
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    H,W = reflect_directions.shape[0], reflect_directions.shape[1]
+    y_z  = torch.zeros((H,W,2), dtype=torch.float32, requires_grad=True, device=device)
+    prev_y_z = y_z.clone()
+        
+    # Adam optimizer
+    optimizer = torch.optim.Adam([y_z], lr=1e-3)
+    
+    def compute_loss(reflect_directions, y_z, d):
+        y,z = y_z[...,0], y_z[...,1]
+        Lx, Ly, Lz = reflect_directions[...,0], reflect_directions[...,1], reflect_directions[...,2]
+
+        x_square = 1 - y**2 - z**2
+        x = torch.sqrt(torch.clamp(x_square, 0, np.inf))
+        x = (-d) + x  # Adjust the center of the ball
+        
+        S = (x + d) * Lx + y * Ly + z * Lz
+        denom = torch.sqrt(torch.clamp(x**2 + y**2 + z**2, min=1e-8))
+        
+        res = torch.stack([
+            (2 * S * (x + d)) - Lx + (x / denom),
+            (2 * S * y) - Ly + (y / denom),
+            (2 * S * z) - Lz + (z / denom),
+            ((x + d)**2 + y**2 + z**2) - 1,
+            torch.clamp(-x_square, min=0.0)
+        ])
+        
+        loss = torch.sum(res**2)
+        return loss
+
+    reflect_directions = torch.from_numpy(reflect_directions).to(device)
+    pbar = tqdm(range(max_iter))
+    for step_id in pbar:
+        optimizer.zero_grad()
+        loss = compute_loss(reflect_directions, y_z, ball_distance)
+        print("loss: ", loss.item())
+        loss.backward()
+        optimizer.step()
+        if torch.isnan(loss).any():
+            y_z = prev_y_z
+            break
+        prev_y_z = y_z.clone()
+
+    y_z = y_z.detach().cpu().numpy()
+
+    normal_directions = np.zeros((H,W,3), dtype=np.float32)
+    normal_directions[...,0] = np.sqrt(np.clip(1 - (y_z[...,0]**2) - (y_z[...,1]**2),0, np.inf))
+    normal_directions[...,1] = y_z[...,0]
+    normal_directions[...,2] = y_z[...,1]
+    return normal_directions
+
+
 def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
     """
     Using scipy's least square to solve for normal direction
@@ -250,7 +291,7 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
         return equations
 
     # compute intial normal from orthographic projection
-    for i in tqdm(range(reflect_directions.shape[0])):
+    for i in (range(reflect_directions.shape[0])):
         for j in range(reflect_directions.shape[1]):
             Lx, Ly, Lz = reflect_directions[i, j]
 
@@ -284,6 +325,15 @@ def solve_for_normal(reflect_directions, ball_distance, half_ball_angle):
 
 
 def get_coordinates_from_normal(normals, half_angle, ball_distance):
+    """
+    Project the normal direction to the environment map
+    @params
+        - normals (np.darray) : normal direction [H,W,3] in format of [x-forward, y-right, z-up]
+        - half_angle (float) : half angle of chromeball
+        - ball_distance (float) : distance to place a unit chromeball
+    @returns
+        np.darray: position to sample from normal [H,W,2] in format of (y-right, z-up) in range [-1,1]
+    """
     # convert from spherical coordinate to cartesian coordinate if needed
     if normals.shape[-1] == 2:
         normals = spherical_to_cartesian(normals[...,0], normal_spherical[...,1])
@@ -308,8 +358,8 @@ def process_image(args: argparse.Namespace, file_name: str):
     # check if exist, skip!
     envmap_output_path = os.path.join(args.envmap_dir, file_name)
     # TODO: TEMPORARY DISTABLE, will reenable after fixing the bug
-    # if os.path.exists(envmap_output_path):
-    #     return None
+    if os.path.exists(envmap_output_path):
+        return None
 
     # read ball image 
     ball_path = os.path.join(args.ball_dir, file_name)
@@ -343,13 +393,14 @@ def process_image(args: argparse.Namespace, file_name: str):
 
     # solving for normal
     normal_directions = solve_for_normal(reflect_directions, ball_distance, half_ball_angle)
+    #save_normal(envmap_output_path+"_normal.png", normal_directions)
     
     # get coordinate to sample from normal 
     pos = get_coordinates_from_normal(normal_directions, half_angle, ball_distance) # [H,W,2] (y-right, z-up)
     
     # since Z-UP (top 1, bottom -1) but torch grid sample is top -1 bottom 1 (is z-down) we flip only z axis 
     # but if we use for blender rendering, it looking from inside, so it need to flip y axis as well.
-    LOOKING_FROM_INSIDE = False
+    
     if LOOKING_FROM_INSIDE:
         pos  = -pos
     else:
@@ -369,18 +420,21 @@ def process_image(args: argparse.Namespace, file_name: str):
     
     # save image
     env_map_default = skimage.transform.resize(env_map, (args.envmap_height, args.envmap_height*2), anti_aliasing=True)
-    env_map_default = env_map
-    if file_name.endswith(".exr"):
-        ezexr.imwrite(envmap_output_path, env_map_default.astype(np.float32))
-        if VIZ_TONEMAP:
-            tonemap = TonemapHDR(2.4,99,0.9)
-            image, _, _ = tonemap(env_map_default)
-            image = skimage.img_as_ubyte(image)
-            skimage.io.imsave(envmap_output_path+'.png', image)
-    else:
-        env_map_default = skimage.img_as_ubyte(env_map_default)        
-        skimage.io.imsave(envmap_output_path, env_map_default)
-    os.chmod(envmap_output_path, 0o777)
+    try:
+        if file_name.endswith(".exr"):
+            ezexr.imwrite(envmap_output_path, env_map_default.astype(np.float32))
+            if VIZ_TONEMAP:
+                tonemap = TonemapHDR(2.4,99,0.9)
+                image, _, _ = tonemap(env_map_default)
+                image = skimage.img_as_ubyte(image)
+                skimage.io.imsave(envmap_output_path+'.png', image)
+                os.chmod(envmap_output_path+'.png', 0o777)
+        else:
+            env_map_default = skimage.img_as_ubyte(env_map_default)        
+            skimage.io.imsave(envmap_output_path, env_map_default)
+        os.chmod(envmap_output_path, 0o777)
+    except:
+        None
     return None
 
     
@@ -400,9 +454,6 @@ def main(args):
     # create partial function for pararell processing
     process_func = partial(process_image, args)
     
-    process_func(files[0])
-    exit()
-        
     # pararell processing
     with Pool(args.threads) as p:
         list(tqdm(p.imap(process_func, files), total=len(files)))

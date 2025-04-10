@@ -50,7 +50,7 @@ sphere_center = np.array([-d, 0, 0])
 sphere_radius = 1.0
 
 # Load environment map (assume latitude-longitude format)
-envmap = imageio.imread('/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid/14n_copyroom1_128px_v19/dir_11_mip2.png')  # shape (H, W, 3)
+envmap = imageio.imread('/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid/14n_copyroom1_256s4_v2/dir_11_mip2.png')  # shape (H, W, 3)
 #envmap = imageio.imread('/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/scripts/ball2persepctiveenvmap/output/envmap_grid/14n_copyroom1_256px_v3/dir_11_mip2.png.normal.png')  # shape (H, W, 3)
 env_h, env_w = envmap.shape[:2]
 
