@@ -350,6 +350,21 @@ def apply_integrate_conv(shcoeff, lmax=6):
             shcoeff[:,:,j] = A[j] * shcoeff[:,:,j]
     return shcoeff
 
+# Function to compute Â_l according to the formula
+def compute_A_hat(l):
+    #@see https://cseweb.ucsd.edu/~ravir/papers/envmap/envmap.pdf
+    if l == 1:
+        return (2 / 3) * np.pi
+    elif l > 1 and l % 2 == 1:
+        return 0.0
+    else:  # l even
+        term1 = 2 * np.pi
+        term2 = ((-1)**((l // 2) - 1)) / ((l + 2) * (l - 1))
+        numerator = np.math.factorial(l)
+        denominator = (2**l) * (np.math.factorial(l // 2)**2)
+        term3 = numerator / denominator
+        return term1 * term2 * term3
+
 # TODO: need unit testing
 def from_x_left_to_z_up(point):
     """

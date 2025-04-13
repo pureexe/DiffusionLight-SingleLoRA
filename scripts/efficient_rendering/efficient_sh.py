@@ -1,19 +1,13 @@
-print("IMPORTING OS")
 import os
 from PIL import Image
 from tqdm.auto import tqdm
 import warnings
-print("IMPORTING TORCH")
 import torch
-print("IMPORTING SKIMAGE")
 import skimage
-print("IMPORTING NUMPY")
 import numpy as np
-print("IMPORTING MULTIPROCESSING")
 from multiprocessing import Pool, cpu_count
 from functools import partial
 import ezexr
-print("IMPORT DONE")
 import time
 import argparse
 from sh_utils import get_ideal_normal_ball_z_up, get_shcoeff, compute_background, sample_from_sh, unfold_sh_coeff, apply_integrate_conv, from_x_left_to_z_up, from_y_up_to_z_up, cartesian_to_spherical
@@ -135,20 +129,19 @@ def process_scene(args, info):
             return None
         # normmalize normal map
         normal_map = normal_map.astype(np.float32)
-        # re normalize to unit length
-        normal_map = normal_map / np.linalg.norm(normal_map, axis=-1, keepdims=True)      
         if args.use_lotus == 1:
             normal_directions = from_x_left_to_z_up(normal_map) # convert from Lotus convention (x-left.y-up,z-forward) to pyshtool (x-right,y-forward,z-up) 
         else:
             # Marigold use x-right, y-up, z-forward
-            # @see https://huggingface.co/docs/diffusers/en/using-diffusers/marigold_usage
+            # @see https://huggingface.co/docs/diffusers/en/using-diffusers/marigold_usage        
+            normal_map = normal_map / np.linalg.norm(normal_map, axis=-1, keepdims=True)  # re normalize to unit length   
             normal_directions = from_y_up_to_z_up(normal_map)
+            normal_directions[..., 2] *= -1 # flip the y axis to match the image coordinate system
         mask = None
     
     # we need to convert normal to reflection vector first 
     fov = get_fov(args, scene_name, filename)
     viewing_directions = get_viewing_directions(args.image_height, args.image_width, fov)
-    viewing_directions = viewing_directions / np.linalg.norm(viewing_directions, axis=-1, keepdims=True) # normalize to unit length
     reflect_directions = get_reflect_directions(viewing_directions, normal_directions)
     
     theta, phi = cartesian_to_spherical(reflect_directions)
@@ -166,6 +159,7 @@ def process_scene(args, info):
         shcoeff = apply_integrate_conv(shcoeff, lmax=args.num_order)
     
     shading = sample_from_sh(shcoeff, lmax=args.num_order, theta=theta, phi=phi)
+    
     if mask is not None:
         shading = shading * mask[...,None]
     
@@ -199,7 +193,8 @@ def process_scene(args, info):
 
 def efficient_rendering(args):
     queues = []
-    for scene_id in tqdm(list(range(args.total_scene))[args.index::args.total]):
+    scene_lists = list(range(args.total_scene))[args.index::args.total]
+    for scene_id in tqdm(scene_lists):
         scene_name = f"{scene_id*1000:06d}"
         coeff_dir = args.coeff_dir_template.format(scene_name)
         if not os.path.exists(coeff_dir):
@@ -207,8 +202,9 @@ def efficient_rendering(args):
         filenames = sorted([a for a in os.listdir(coeff_dir) if a.endswith('.npy')])
         for filename in filenames:
             queues.append((scene_name, filename.replace('.npy', ''), args))
+
     fn = partial(process_scene, args)
-    with Pool(cpu_count()) as pool:
+    with Pool(args.threads) as pool:
         list(tqdm(pool.imap_unordered(fn, queues), total=len(queues)))
 
         
@@ -220,17 +216,17 @@ if __name__ == "__main__":
     parser.add_argument( '--image_height', type=int, default=1024, help='size of image to generate in height')
     parser.add_argument( '--fov_width', type=int, default=1024, help='image size when calcurating fov')
     parser.add_argument('--focal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/focal", help='template for coeff dir')
-    parser.add_argument('--coeff_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_fov_order100", help='template for coeff dir')
-    parser.add_argument('--normal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/normal_lotus", help='template for normal dir')
-    parser.add_argument('--output_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_fov_order6", help='template for output dir')
-    parser.add_argument('--vizmax_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_fov_order6_viz_max", help='template for vizmax dir')
-    parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_fov_order6_viz_ldr", help='template for vizldr dir')
+    parser.add_argument('--coeff_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_v3_order100", help='template for coeff dir')
+    parser.add_argument('--normal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/normal", help='template for normal dir')
+    parser.add_argument('--output_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2", help='template for output dir')
+    parser.add_argument('--vizmax_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2_viz_max", help='template for vizmax dir')
+    parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2_viz_ldr", help='template for vizldr dir')
     parser.add_argument('--total_scene', type=int, default=816)
-    parser.add_argument('--num_order', type=int, default=6)
+    parser.add_argument('--num_order', type=int, default=2)
     parser.add_argument('--apply_integrate', type=int, default=1)
-    parser.add_argument('--threads', type=int, default=16)
-    parser.add_argument('--use_viz', type=int, default=1)
-    parser.add_argument('--use_lotus', type=int, default=1)
+    parser.add_argument('--threads', type=int, default=8)
+    parser.add_argument('--use_viz', type=int, default=0)
+    parser.add_argument('--use_lotus', type=int, default=0)
     parser.add_argument('--use_ball', type=int, default=0, help="use ball as a normal map")
     args = parser.parse_args()
     efficient_rendering(args)

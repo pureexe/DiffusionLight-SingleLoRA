@@ -30,7 +30,8 @@ def create_argparser():
 
 def process_file(meta):
     input_dir, output_dir, filename, num_order = meta
-    out_path = os.path.join(output_dir, filename.replace(".exr", ".npy"))
+    _, file_extension = os.path.splitext(filename)
+    out_path = os.path.join(output_dir, filename.replace(file_extension, ".npy"))
     if os.path.exists(out_path):
         return None
     in_path = os.path.join(input_dir, filename)
@@ -70,7 +71,7 @@ def main():
         os.chmod(output_dir, 0o777)
         
         # get all scenes 
-        scenes = sorted([a for a in os.listdir(input_dir) if a.endswith('.exr')])
+        scenes = sorted([a for a in os.listdir(input_dir)]) #if a.endswith('.exr')
 
         queues = []
         # generate all queue
@@ -79,7 +80,7 @@ def main():
             queues.append([input_dir, output_dir, scene, args.num_order])
 
         print("PROCESSING FILE...")
-        with Pool(40) as p:
+        with Pool(args.threads) as p:
             list(tqdm(p.imap(process_file, queues), total=len(queues)))
         
         # print total time 
