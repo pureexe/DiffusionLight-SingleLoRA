@@ -195,12 +195,11 @@ def process_scene(args, info):
         vizmax_path = os.path.join(vizmax_dir, filename + '.png')
         skimage.io.imsave(vizmax_path, skimage.img_as_ubyte(shading_norm))
         os.chmod(vizmax_path, 0o777)
-        print("SAVE AT: ", vizmax_path)
     return None
 
 def efficient_rendering(args):
     queues = []
-    scene_lists = list(range(args.total_scene))[args.index::args.total]
+    scene_lists = list(range(args.total_scene))[args.idx::args.total]
     for scene_id in tqdm(scene_lists):
         scene_name = f"{scene_id*1000:06d}"
         coeff_dir = args.coeff_dir_template.format(scene_name)
@@ -217,23 +216,23 @@ def efficient_rendering(args):
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process index and total.")
-    parser.add_argument('-i', '--index', type=int, default=0, help='Index of the item')
+    parser.add_argument('-i', '--idx', type=int, default=0, help='Index of the item')
     parser.add_argument('-t', '--total', type=int, default=1, help='Total number of items')
     parser.add_argument( '--image_width', type=int, default=1024, help='size of image to generate in width')
     parser.add_argument( '--image_height', type=int, default=1024, help='size of image to generate in height')
     parser.add_argument( '--fov_width', type=int, default=1024, help='image size when calcurating fov')
     parser.add_argument('--focal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/focal", help='template for coeff dir')
     parser.add_argument('--coeff_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_v3_order100", help='template for coeff dir')
-    parser.add_argument('--normal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/normal", help='template for normal dir')
-    parser.add_argument('--output_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2", help='template for output dir')
-    parser.add_argument('--vizmax_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2_viz_max", help='template for vizmax dir')
-    parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2_viz_ldr", help='template for vizldr dir')
+    parser.add_argument('--normal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/normal_lotus", help='template for normal dir')
+    parser.add_argument('--output_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_lotus", help='template for output dir')
+    parser.add_argument('--vizmax_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_lotus_viz_max", help='template for vizmax dir')
+    parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_lotus_viz_ldr", help='template for vizldr dir')
     parser.add_argument('--total_scene', type=int, default=816)
-    parser.add_argument('--num_order', type=int, default=2)
+    parser.add_argument('--num_order', type=int, default=6)
     parser.add_argument('--apply_integrate', type=int, default=1)
     parser.add_argument('--threads', type=int, default=8)
     parser.add_argument('--use_viz', type=int, default=0)
-    parser.add_argument('--use_lotus', type=int, default=0)
+    parser.add_argument('--use_lotus', type=int, default=1)
     parser.add_argument('--use_ball', type=int, default=0, help="use ball as a normal map")
     parser.add_argument('--use_single_ray_trace', type=int, default=0, help="when use single ray tracing")
     

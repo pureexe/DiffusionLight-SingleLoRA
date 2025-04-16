@@ -2,7 +2,7 @@ import os
 import time
 
 TOTAL_SCENE = 816
-TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2"
+TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_lotus"
 
 def count_files():
     count = 0
