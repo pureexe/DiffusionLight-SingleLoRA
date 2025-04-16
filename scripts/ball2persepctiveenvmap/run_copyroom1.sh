@@ -50,4 +50,10 @@ python efficient_sh.py --coeff_dir_template /ist/ist-share/vision/pakkapon/relig
 ########### LDR test
 python reverse_wrapping.py --focal_dir /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/focal  --envmap_dir /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/envmap_perspective_v3_ldr_gt --ball_dir /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/square_ldr_gt --fov_width 512 --threads 1
 
-python envmap2sh_hdr.py --input_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/envmap_perspective_v3_gt --output_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/shcoeff_perspective_v3_order100_gt --total_scene 1 --num_order 100
+python envmap2sh_hdr.py --input_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/envmap_perspective_v3_ldr_gt --output_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/shcoeff_perspective_v3_order100_ldr_gt --total_scene 1 --num_order 100
+
+#/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/shcoeff_perspective_v3_order100_ldr_gt
+
+
+# RUN LDR BASIS
+python envmap2sh_hdr.py --input_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/envmap_perspective_v3_ldr_gt --output_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/{}/shcoeff_perspective_v3_order100_ldr_gt --total_scene 1 --num_order 100

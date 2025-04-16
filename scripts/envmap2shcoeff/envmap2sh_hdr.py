@@ -38,10 +38,14 @@ def process_file(meta):
     if not os.path.exists(in_path):
         return None
     try:
-        image = ezexr.imread(in_path)
+        if file_extension == ".exr":
+            image = ezexr.imread(in_path)
+        else:
+            image = skimage.io.imread(in_path)
+            image = skimage.img_as_float(image)
     except:
         return None
-    image = skimage.img_as_float(image)[...,:3]
+    image = image[...,:3]
     image = np.clip(image,0,np.inf)
     coeff = get_shcoeff(image, Lmax=num_order)
     shcoeff = flatten_sh_coeff(coeff, max_sh_level=num_order)

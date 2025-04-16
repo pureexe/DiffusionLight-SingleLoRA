@@ -1,5 +1,5 @@
 
-TOTAL_JOB = 20
+TOTAL_JOB = 16
 
 for i in range(TOTAL_JOB):
     

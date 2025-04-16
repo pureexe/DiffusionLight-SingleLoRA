@@ -130,22 +130,28 @@ def process_scene(args, info):
         # normmalize normal map
         normal_map = normal_map.astype(np.float32)
         if args.use_lotus == 1:
+            normal_map = normal_map / np.linalg.norm(normal_map, axis=-1, keepdims=True)  # re normalize to unit length
             normal_directions = from_x_left_to_z_up(normal_map) # convert from Lotus convention (x-left.y-up,z-forward) to pyshtool (x-right,y-forward,z-up) 
         else:
             # Marigold use x-right, y-up, z-forward
             # @see https://huggingface.co/docs/diffusers/en/using-diffusers/marigold_usage        
             normal_map = normal_map / np.linalg.norm(normal_map, axis=-1, keepdims=True)  # re normalize to unit length   
             normal_directions = from_y_up_to_z_up(normal_map)
-            normal_directions[..., 2] *= -1 # flip the y axis to match the image coordinate system
+            #normal_directions[..., 2] *= -1 # flip the y axis to match the image coordinate system
         mask = None
     
-    # we need to convert normal to reflection vector first 
-    fov = get_fov(args, scene_name, filename)
-    viewing_directions = get_viewing_directions(args.image_height, args.image_width, fov)
-    reflect_directions = get_reflect_directions(viewing_directions, normal_directions)
-    
-    theta, phi = cartesian_to_spherical(reflect_directions)
-
+    if args.use_single_ray_trace == 1:
+        # we need to convert normal to reflection vector first 
+        fov = get_fov(args, scene_name, filename)
+        viewing_directions = get_viewing_directions(args.image_height, args.image_width, fov)
+        reflect_directions = get_reflect_directions(viewing_directions, normal_directions)
+        theta, phi = cartesian_to_spherical(reflect_directions)
+    else:
+        # here we assume that surface is diffuse.
+        # Diffuse is combine all light direction around normal vector (diffuse lobe) regardless of viewing or reflect light direction 
+        # @see https://imgur.com/a/Xtga9Mq
+        theta, phi = cartesian_to_spherical(normal_directions)
+       
     # load shcoeff 
     coeff_dir = args.coeff_dir_template.format(scene_name)
     coeff_path = os.path.join(
@@ -189,6 +195,7 @@ def process_scene(args, info):
         vizmax_path = os.path.join(vizmax_dir, filename + '.png')
         skimage.io.imsave(vizmax_path, skimage.img_as_ubyte(shading_norm))
         os.chmod(vizmax_path, 0o777)
+        print("SAVE AT: ", vizmax_path)
     return None
 
 def efficient_rendering(args):
@@ -228,5 +235,7 @@ if __name__ == "__main__":
     parser.add_argument('--use_viz', type=int, default=0)
     parser.add_argument('--use_lotus', type=int, default=0)
     parser.add_argument('--use_ball', type=int, default=0, help="use ball as a normal map")
+    parser.add_argument('--use_single_ray_trace', type=int, default=0, help="when use single ray tracing")
+    
     args = parser.parse_args()
     efficient_rendering(args)
