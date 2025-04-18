@@ -8,7 +8,7 @@ dest_base = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/shadi
 # Iterate over the directories from 000000 to 815000 in steps of 1000
 for i in range(0, 816000, 1000):
     dir_name = f"{i:06d}"
-    source_path = os.path.join(source_base, dir_name, "shading_exr_perspective_fov_order6")
+    source_path = os.path.join(source_base, dir_name, "shading_exr_perspective_v3_order6_lotus")
     dest_path = os.path.join(dest_base, dir_name)
     
     # Ensure source exists

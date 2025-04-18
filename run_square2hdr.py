@@ -24,7 +24,6 @@ def main():
             print("NOT FOUND: ", in_dir)
             continue
         cmd = f"python exposure2hdr.py --input_dir {in_dir} --output_dir {out_dir}"
-        print(cmd)
         os.system(cmd)
 
         

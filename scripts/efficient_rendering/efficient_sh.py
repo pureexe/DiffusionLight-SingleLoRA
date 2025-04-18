@@ -200,6 +200,7 @@ def process_scene(args, info):
 def efficient_rendering(args):
     queues = []
     scene_lists = list(range(args.total_scene))[args.idx::args.total]
+    print(scene_lists)
     for scene_id in tqdm(scene_lists):
         scene_name = f"{scene_id*1000:06d}"
         coeff_dir = args.coeff_dir_template.format(scene_name)
