@@ -20,9 +20,9 @@ MASTER_TYPE = torch.float16
 # SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/raw"
 # TOTAL_SCENE = 816
 
-IMAGE_PATH = "/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/train/images/14n_copyroom1"
-NORMAL_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/normal"
-VIZ_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom1/000000/normal_viz"
+IMAGE_PATH = "/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/train/images/14n_copyroom10"
+NORMAL_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/000000/normal"
+VIZ_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/000000/normal_viz"
 
 def create_argparser():    
     parser = argparse.ArgumentParser()

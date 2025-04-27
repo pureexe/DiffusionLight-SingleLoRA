@@ -1,5 +1,6 @@
-INPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/000000/shading_exr_perspective_v3_order2"
-OUTPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/000000/shading_exr_perspective_v3_order2_viz_ldr"
+INPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/000000/shading_exr_perspective_v3_order6_marigold"
+OUTPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/000000/shading_exr_perspective_v3_order6_marigold_viz_ldr"
+OUTPUT_MAX = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/000000/shading_exr_perspective_v3_order6_marigold_viz_max"
 
 import os
 from tonemapper import TonemapHDR
@@ -11,6 +12,7 @@ import skimage
 def process_scene(filename):
     in_path = os.path.join(INPUT_DIR, filename)
     viz_path = os.path.join(OUTPUT_DIR, filename.replace(".exr", ".png"))
+    viz_max_path = os.path.join(OUTPUT_MAX, filename.replace(".exr", ".png"))
     # read exr file
     image = ezexr.imread(in_path)
     # convert to tonemapper
@@ -18,11 +20,16 @@ def process_scene(filename):
     tonemapped_shading, _, _ = tonemap(image)
     skimage.io.imsave(viz_path, skimage.img_as_ubyte(tonemapped_shading))
     os.chmod(viz_path, 0o777)
+    shading_max = image / image.max()
+    skimage.io.imsave(viz_max_path, skimage.img_as_ubyte(shading_max))
+    os.chmod(viz_max_path, 0o777)
 
 def main():
     # Create the output directory if it doesn't exist
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.chmod(OUTPUT_DIR, 0o777)
+    os.makedirs(OUTPUT_MAX, exist_ok=True)
+    os.chmod(OUTPUT_MAX, 0o777)
 
     # list all file in INPUT_DIR
     files = sorted(os.listdir(INPUT_DIR))

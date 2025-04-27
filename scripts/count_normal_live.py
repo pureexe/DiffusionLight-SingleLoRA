@@ -3,7 +3,7 @@ import time
 
 TOTAL_SCENE = 816
 #TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_lotus"
-TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_marigold"
+TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/normal"
 
 
 def count_files():
@@ -15,7 +15,7 @@ def count_files():
             files = os.listdir(image_dir)
         except:
             continue
-        exr_files = [f for f in files if f.endswith(".exr")]
+        exr_files = [f for f in files if f.endswith(".npz")]
         count += len(exr_files)
     return count
 

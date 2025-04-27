@@ -17,7 +17,9 @@ import pyshtools
 MASTER_TYPE = torch.float16
 DATASET_PATH = "/ist/ist-share/vision/relight/datasets/laion-aesthetics-1024/images"
 OUTPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024"
-SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/raw"
+#SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/raw"
+SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_v3_order100"
+
 TOTAL_SCENE = 816
 
 def create_argparser():    
@@ -28,7 +30,7 @@ def create_argparser():
 
 def main():
     args = create_argparser().parse_args()
-    dir_ids = list(range(0, TOTAL_SCENE))
+    dir_ids = list(range(200, TOTAL_SCENE))
     dir_ids = dir_ids[args.idx::args.total]
 
     # load dataset
@@ -48,7 +50,8 @@ def main():
         if not os.path.exists(output_dir):
             continue
 
-        files_ids = sorted([a.replace('_ev-00.png','') for a in os.listdir(chromeball_raw_dir) if a.endswith('_ev-00.png')])
+        #files_ids = sorted([a.replace('_ev-00.png','') for a in os.listdir(chromeball_raw_dir) if a.endswith('_ev-00.png')])
+        files_ids = sorted([a.replace('.npy','') for a in os.listdir(chromeball_raw_dir) if a.endswith('.npy')])
         normal_dir = os.path.join(output_dir, 'normal')
         os.makedirs(output_dir, exist_ok=True)
         os.makedirs(normal_dir, exist_ok=True)

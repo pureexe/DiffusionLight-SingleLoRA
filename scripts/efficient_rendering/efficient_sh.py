@@ -100,8 +100,11 @@ def process_scene(args, info):
     filename = info[1]
                 
     output_dir = args.output_dir_template.format(scene_name)
-    os.makedirs(output_dir,exist_ok=True) 
-    os.chmod(output_dir, 0o777)
+    try:
+        os.makedirs(output_dir,exist_ok=True) 
+        os.chmod(output_dir, 0o777)
+    except:
+        pass
         
     output_path = os.path.join(
         output_dir,
@@ -170,37 +173,48 @@ def process_scene(args, info):
         shading = shading * mask[...,None]
     
     shading = np.float32(shading)
-    ezexr.imwrite(output_path, shading)
-    os.chmod(output_path, 0o777)
+    try:
+        ezexr.imwrite(output_path, shading)
+        os.chmod(output_path, 0o777)
+    except: 
+        pass
     
     if args.use_viz==1:
         vizmax_dir = args.vizmax_dir_template.format(scene_name)
         vizldr_dir = args.vizldr_dir_template.format(scene_name)
         
-        os.makedirs(vizmax_dir, exist_ok=True)
-        os.chmod(vizmax_dir, 0o777)
-        os.makedirs(vizldr_dir, exist_ok=True)
-        os.chmod(vizldr_dir, 0o777)
+        try:
+            os.makedirs(vizmax_dir, exist_ok=True)
+            os.chmod(vizmax_dir, 0o777)
+            os.makedirs(vizldr_dir, exist_ok=True)
+            os.chmod(vizldr_dir, 0o777)
+        except:
+            pass
         
         tonemap = TonemapHDR(gamma=2.4, percentile=50, max_mapping=0.5)
         shading = np.clip(shading, 0, np.inf)
         tonemapped_shading, _, _ = tonemap(shading)
         vizldr_path = os.path.join(vizldr_dir, filename + '.png')
-        skimage.io.imsave(vizldr_path, skimage.img_as_ubyte(tonemapped_shading))
-        os.chmod(vizldr_path, 0o777)
+        try:
+            skimage.io.imsave(vizldr_path, skimage.img_as_ubyte(tonemapped_shading))
+            os.chmod(vizldr_path, 0o777)
+        except:
+            pass
         
         percentile99 = np.percentile(shading, 99)
         shading_norm = shading / percentile99
         shading_norm = np.clip(shading_norm, 0, 1)
         vizmax_path = os.path.join(vizmax_dir, filename + '.png')
-        skimage.io.imsave(vizmax_path, skimage.img_as_ubyte(shading_norm))
-        os.chmod(vizmax_path, 0o777)
+        try:
+            skimage.io.imsave(vizmax_path, skimage.img_as_ubyte(shading_norm))
+            os.chmod(vizmax_path, 0o777)
+        except:
+            pass
     return None
 
 def efficient_rendering(args):
     queues = []
-    scene_lists = list(range(args.total_scene))[args.idx::args.total]
-    print(scene_lists)
+    scene_lists = list(range(args.total_scene))
     for scene_id in tqdm(scene_lists):
         scene_name = f"{scene_id*1000:06d}"
         coeff_dir = args.coeff_dir_template.format(scene_name)
@@ -208,7 +222,11 @@ def efficient_rendering(args):
             continue
         filenames = sorted([a for a in os.listdir(coeff_dir) if a.endswith('.npy')])
         for filename in filenames:
-            queues.append((scene_name, filename.replace('.npy', ''), args))
+            out_path = os.path.join(args.output_dir_template.format(scene_name), filename.replace('.npy', '.exr'))
+            if not os.path.exists(out_path):
+                queues.append((scene_name, filename.replace('.npy', ''), args))
+            
+    queues = queues[args.idx::args.total]
 
     fn = partial(process_scene, args)
     with Pool(args.threads) as pool:
@@ -224,18 +242,43 @@ if __name__ == "__main__":
     parser.add_argument( '--fov_width', type=int, default=1024, help='image size when calcurating fov')
     parser.add_argument('--focal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/focal", help='template for coeff dir')
     parser.add_argument('--coeff_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_v3_order100", help='template for coeff dir')
-    parser.add_argument('--normal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/normal_lotus", help='template for normal dir')
-    parser.add_argument('--output_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_lotus", help='template for output dir')
-    parser.add_argument('--vizmax_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_lotus_viz_max", help='template for vizmax dir')
-    parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_lotus_viz_ldr", help='template for vizldr dir')
+    parser.add_argument('--normal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/normal", help='template for normal dir')
+    parser.add_argument('--output_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_marigold", help='template for output dir')
+    parser.add_argument('--vizmax_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_marigold_viz_max", help='template for vizmax dir')
+    parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_marigold_viz_ldr", help='template for vizldr dir')
     parser.add_argument('--total_scene', type=int, default=816)
     parser.add_argument('--num_order', type=int, default=6)
     parser.add_argument('--apply_integrate', type=int, default=1)
     parser.add_argument('--threads', type=int, default=8)
     parser.add_argument('--use_viz', type=int, default=0)
-    parser.add_argument('--use_lotus', type=int, default=1)
+    parser.add_argument('--use_lotus', type=int, default=0)
     parser.add_argument('--use_ball', type=int, default=0, help="use ball as a normal map")
     parser.add_argument('--use_single_ray_trace', type=int, default=0, help="when use single ray tracing")
     
     args = parser.parse_args()
     efficient_rendering(args)
+
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser(description="Process index and total.")
+#     parser.add_argument('-i', '--idx', type=int, default=0, help='Index of the item')
+#     parser.add_argument('-t', '--total', type=int, default=1, help='Total number of items')
+#     parser.add_argument( '--image_width', type=int, default=1024, help='size of image to generate in width')
+#     parser.add_argument( '--image_height', type=int, default=1024, help='size of image to generate in height')
+#     parser.add_argument( '--fov_width', type=int, default=1024, help='image size when calcurating fov')
+#     parser.add_argument('--focal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/{}/focal", help='template for coeff dir')
+#     parser.add_argument('--coeff_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/{}/shcoeff_perspective_v3_order100", help='template for coeff dir')
+#     parser.add_argument('--normal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/{}/normal", help='template for normal dir')
+#     parser.add_argument('--output_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/{}/shading_exr_perspective_v3_order6_marigold", help='template for output dir')
+#     parser.add_argument('--vizmax_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10{}/shading_exr_perspective_v3_order6_marigold_viz_max", help='template for vizmax dir')
+#     parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10{}/shading_exr_perspective_v3_order6_marigold_viz_ldr", help='template for vizldr dir')
+#     parser.add_argument('--total_scene', type=int, default=816)
+#     parser.add_argument('--num_order', type=int, default=6)
+#     parser.add_argument('--apply_integrate', type=int, default=1)
+#     parser.add_argument('--threads', type=int, default=8)
+#     parser.add_argument('--use_viz', type=int, default=1)
+#     parser.add_argument('--use_lotus', type=int, default=0)
+#     parser.add_argument('--use_ball', type=int, default=0, help="use ball as a normal map")
+#     parser.add_argument('--use_single_ray_trace', type=int, default=0, help="when use single ray tracing")
+    
+#     args = parser.parse_args()
+#     efficient_rendering(args)
