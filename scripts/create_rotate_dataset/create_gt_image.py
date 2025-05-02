@@ -25,9 +25,9 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process index and total.")
-    parser.add_argument('--source_image', type=str, default="/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/train/images/14n_copyroom10/dir_18_mip2.jpg", help="source shcoeff")
-    parser.add_argument('--shadings_dir', type=str, default="/ist/ist-share/vision/relight/datasets/laion-shading/v2/rotate/shadings/14n_copyroom10_light18", help="output shcoeff directory")
-    parser.add_argument('--output_dir', type=str, default="/ist/ist-share/vision/relight/datasets/laion-shading/v2/rotate/images/14n_copyroom10_light18", help="output shcoeff directory")
+    parser.add_argument('--source_image', type=str, default="/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/rotate/images/everett_kitchen6/dir_0_mip2.png", help="source shcoeff")
+    parser.add_argument('--shadings_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate/everett_kitchen6/shading_exr_perspective_v3_order6_marigold", help="output shcoeff directory")
+    parser.add_argument('--output_dir', type=str, default="/ist/ist-share/vision/relight/datasets/multi_illumination/shadings/least_square/v3/rotate/images/everett_kitchen6", help="output shcoeff directory")
     parser.add_argument('--num_frame', type=int, default=60, help="number of frame that will create the video")
     args = parser.parse_args()
     main(args)

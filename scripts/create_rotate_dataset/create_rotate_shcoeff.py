@@ -18,9 +18,9 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process index and total.")
-    parser.add_argument('--source_shcoeff', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/scene_inspect/14n_copyroom10/000000/shcoeff_perspective_fov_order100_gt/dir_18_mip2.npy", help="source shcoeff")
-    parser.add_argument('--output_dir', type=str, default="/ist/ist-share/vision/relight/datasets/laion-shading/v2/rotate/shcoeffs/14n_copyroom10_light18", help="output shcoeff directory")
+    parser.add_argument('--source_shcoeff', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate/everett_kitchen6/shcoeff_perspective_v3_order100_main/dir_0_mip2.npy", help="source shcoeff")
+    parser.add_argument('--output_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate/everett_kitchen6/shcoeff_perspective_v3_order100", help="output shcoeff directory")
     parser.add_argument('--num_frame', type=int, default=60, help="number of frame that will create the video")
-    parser.add_argument('--max_order', type=int, default=100, help="number of shcoeff_max_order")
+    parser.add_argument('--max_order', type=int, default=6, help="number of shcoeff_max_order")
     args = parser.parse_args()
     main(args)

@@ -2,9 +2,9 @@ import os
 import argparse 
 
 HUGGINGFACE_PATH="/ist/ist-share/vision/huggingface"
-DATASET_PATH = "/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/train/control_render_from_fitting_v2"
-OUTPUT_PATH = "output/multi_illumination/least_square/train"
-CACHE_DIR = "output/cache/laion-multi_illumination/least_square/train/"
+DATASET_PATH = "/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/rotate/images"
+OUTPUT_PATH = "output/multi_illumination/least_square/rotate"
+CACHE_DIR = "output/cache/laion-multi_illumination/least_square/rotate/"
 
 """
 CUDA_VISIBLE_DEVICES=2 python validate_2lora.py \

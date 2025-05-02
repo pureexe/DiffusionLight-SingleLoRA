@@ -100,3 +100,4 @@ python ball2perspectiveenvmap.py --ball_dir /ist/ist-share/vision/pakkapon/relig
 ##############################################
 
 python envmap2sh_hdr.py --input_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/envmap_perspective_v3 --output_template /ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/000000/shcoeff_perspective_v3_order100 --total_scene 816 --num_order 100 --threads 8
+f

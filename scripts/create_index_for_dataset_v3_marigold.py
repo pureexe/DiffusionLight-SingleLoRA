@@ -3,7 +3,7 @@ import json
 
 TOTAL_FRAME = 816
 SHADING_DIR = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/shadings_marigold"
-INDEX_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/index/100k_marigold.json"
+INDEX_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/index/150k_marigold.json"
 PROMPT_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/prompts.json"
 DEFAULT_PROMPT = "a photorealistic image"
 
@@ -28,8 +28,8 @@ def main():
             indexs['image_index'].append(name)
             indexs['envmap_index'].append([name])
             prompts[name] = DEFAULT_PROMPT
-    indexs['image_index'] = indexs['image_index'][:100000]
-    indexs['envmap_index'] = indexs['envmap_index'][:100000]            
+    indexs['image_index'] = indexs['image_index'][:150000]
+    indexs['envmap_index'] = indexs['envmap_index'][:150000]            
     with open(INDEX_PATH, "w") as json_file:
         json.dump(indexs, json_file, indent=4)
     #with open(PROMPT_PATH, "w") as json_file:
