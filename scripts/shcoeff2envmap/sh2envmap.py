@@ -24,10 +24,11 @@ def create_argparser():
     parser.add_argument("-i","--idx", type=int, default=0, help="process id")
     parser.add_argument("--input_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help="template path for input dir")
     parser.add_argument("--output_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help="template path for output dir")
-    parser.add_argument("--envmap_dir", type=str, default="envmap_perspective_v3_pred_order_100v2", help="envmap dir")
-    parser.add_argument("--shcoeff_dir", type=str, default="shcoeff_perspective_v3_order100", help="shcoeff dir")
-    parser.add_argument("--num_order", type=int, default=100, help="number of sperical harmonic order")
+    parser.add_argument("--envmap_dir", type=str, default="envmap_perspective_v3_order2", help="envmap dir")
+    parser.add_argument("--shcoeff_dir", type=str, default="shcoeff_perspective_v3_order2", help="shcoeff dir")
+    parser.add_argument("--num_order", type=int, default=2, help="number of sperical harmonic order")
     parser.add_argument("--threads", type=int, default=8, help="number of threads")
+    parser.add_argument("--value_scaleup", type=float, default=1.0, help="value scale up")
     return parser
 
 def process_file(args, meta):
@@ -49,12 +50,12 @@ def process_file(args, meta):
         shcoeff = np.load(in_path)
     except:
         return None
-    print(shcoeff.shape)
-    return None
     shcoeff = unfold_sh_coeff(shcoeff, max_sh_level=args.num_order)
     envmmap = compute_background(hfov=None,sh=shcoeff,lmax=args.num_order)
-    envmmap = envmmap[...,:3]
+    envmmap = envmmap[...,:3] * args.value_scaleup
     print(out_path)
+    print("MAX: VALUE ")
+    print(envmmap.max())
     ezexr.imwrite(out_path, envmmap)
     os.chmod(out_dir, 0o777)
     return None

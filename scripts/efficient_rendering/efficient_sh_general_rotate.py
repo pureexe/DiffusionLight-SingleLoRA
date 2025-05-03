@@ -10,7 +10,7 @@ from functools import partial
 import ezexr
 import time
 import argparse
-from sh_utils import get_ideal_normal_ball_z_up, get_shcoeff, compute_background, sample_from_sh, unfold_sh_coeff, apply_integrate_conv, from_x_left_to_z_up, from_y_up_to_z_up, cartesian_to_spherical
+from sh_utils import get_ideal_normal_ball_z_up, get_shcoeff, compute_background, sample_from_sh, sample_from_sh_numpy, unfold_sh_coeff, apply_integrate_conv, from_x_left_to_z_up, from_y_up_to_z_up, cartesian_to_spherical
 from tonemapper import TonemapHDR
 
 def get_fov(args, scene_name, filename):
@@ -170,6 +170,8 @@ def process_scene(args, info):
         shcoeff = apply_integrate_conv(shcoeff, lmax=args.num_order)
     
     shading = sample_from_sh(shcoeff, lmax=args.num_order, theta=theta, phi=phi)
+
+    #shading = sample_from_sh_numpy(shcoeff, lmax=args.num_order, theta=theta, phi=phi)
     
     if mask is not None:
         shading = shading * mask[...,None]
@@ -246,10 +248,10 @@ if __name__ == "__main__":
     parser.add_argument('--focal_dir', type=str, default="focal", help='template for coeff dir')
     parser.add_argument('--coeff_dir', type=str, default="shcoeff_perspective_v3_order100", help='template for coeff dir')
     parser.add_argument('--normal_dir', type=str, default="normal", help='template for normal dir')
-    parser.add_argument('--shading_dir', type=str, default="shading_exr_perspective_v3_order6_ball", help='template for output dir')
-    parser.add_argument('--vizmax_dir', type=str, default="shading_exr_perspective_v3_order6_ball_viz_max", help='template for vizmax dir')
-    parser.add_argument('--vizldr_dir', type=str, default="shading_exr_perspective_v3_order6_ball_viz_ldr", help='template for vizldr dir')
-    parser.add_argument('--num_order', type=int, default=6)
+    parser.add_argument('--shading_dir', type=str, default="shading_exr_perspective_v3_order2_ball", help='template for output dir')
+    parser.add_argument('--vizmax_dir', type=str, default="shading_exr_perspective_v3_order2_ball_viz_max", help='template for vizmax dir')
+    parser.add_argument('--vizldr_dir', type=str, default="shading_exr_perspective_v3_order2_ball_viz_ldr", help='template for vizldr dir')
+    parser.add_argument('--num_order', type=int, default=2)
     parser.add_argument('--apply_integrate', type=int, default=1)
     parser.add_argument('--threads', type=int, default=8)
     parser.add_argument('--use_viz', type=int, default=1)

@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.special import sph_harm
 import pyshtools
 import torch
 
@@ -81,11 +82,37 @@ def compute_background(sh, lmax=2, image_width=512):
     output_image = np.concatenate(output_image,axis=-1)
     return output_image
 
+def is_4pi_normalized(shcoeff, lmax, atol=1e-3):
+    """
+    Test whether the input SH coefficients use '4pi' normalization.
+    It reconstructs Y_{00} and compares it to sqrt(1/(4pi)), which under 4pi normalization equals 1.
+    """
+    # Test only the first channel (assumes RGB)
+    coeff = shcoeff[0]
+    assert coeff.shape == (2, lmax+1, lmax+1)
+
+    # Check the DC component Y_{00}
+    y00_value = coeff[0, 0, 0]
+    
+    # Under 4pi normalization, Y00 = 1 (not sqrt(1/(4pi)))
+    if abs(y00_value - 1.0) > atol:
+        return False
+
+    # Optionally, you could also expand and check the energy:
+    test_coeff = np.zeros((2, lmax+1, lmax+1), dtype=np.float64)
+    test_coeff[0, 0, 0] = 1.0
+    coeffs = pyshtools.SHCoeffs.from_array(test_coeff, normalization='4pi', csphase=1)
+    grid = coeffs.expand(grid='DH', lmax_calc=0)
+    
+    surface_integral = np.sum(grid.data * np.cos(np.radians(grid.lats))) * 360 / grid.nlat  # approximate area integral
+    return abs(surface_integral - 1.0) < atol
+
 def sample_from_sh(shcoeff, lmax, theta, phi):
     """
     Sample envmap from sh 
     """
     assert shcoeff.shape[0] == 3 # make sure that it a 3 channel input
+    #assert is_4pi_normalized(shcoeff, lmax) # make sure that the input is 4pi normalized
     output = []
     for ch in (range(3)):
         coeffs = pyshtools.SHCoeffs.from_array(shcoeff[ch], lmax=lmax, normalization='4pi', csphase=1)
@@ -93,6 +120,55 @@ def sample_from_sh(shcoeff, lmax, theta, phi):
         output.append(image[...,None])
     output = np.concatenate(output, axis=-1)
     return output
+
+def sample_from_sh_numpy(shcoeff, lmax, theta, phi):
+    """
+    Fast SH sampling using NumPy and scipy.special.sph_harm.
+    
+    Parameters:
+        shcoeff: (3, 2, lmax+1, lmax+1) SH coefficients, 4pi-normalized (R, G, B channels)
+        lmax: maximum degree
+        theta: ndarray of shape (N,) or (H, W), polar angle in radians [0, pi]
+        phi: ndarray of shape (N,) or (H, W), azimuth angle in radians [0, 2pi]
+        
+    Returns:
+        output: (..., 3) RGB values at each (theta, phi)
+    """
+    assert shcoeff.shape[0] == 3 and shcoeff.shape[1] == 2
+    theta = np.asarray(theta)
+    phi = np.asarray(phi)
+    
+    shape = theta.shape
+    theta = theta.ravel()
+    phi = phi.ravel()
+    n_points = theta.size
+    
+    Y = np.zeros((lmax + 1, 2 * lmax + 1, n_points), dtype=np.float64)
+
+    # Precompute SH basis for all (l, m) at all points
+    for l in range(lmax + 1):
+        for m in range(-l, l + 1):
+            idx = m + l  # m from -l to l --> index from 0 to 2l
+            Y[l, idx] = sph_harm(m, l, phi, theta).real
+
+    output = np.zeros((n_points, 3), dtype=np.float64)
+
+    # Evaluate for each channel
+    for ch in range(3):
+        acc = np.zeros(n_points, dtype=np.float64)
+        coeffs = shcoeff[ch]  # (2, lmax+1, lmax+1)
+        for l in range(lmax + 1):
+            for m in range(0, l + 1):
+                c = coeffs[0, l, m]  # cosine (real)
+                s = coeffs[1, l, m]  # sine (imag)
+                if m == 0:
+                    acc += c * Y[l, l]
+                else:
+                    acc += c * Y[l, l + m] + s * Y[l, l - m]
+        output[:, ch] = acc
+
+    return output.reshape(*shape, 3)
+
 
 def get_ideal_normal_ball(size, flip_x=True):
     """

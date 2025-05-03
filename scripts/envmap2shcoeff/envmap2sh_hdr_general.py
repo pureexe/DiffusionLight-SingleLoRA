@@ -25,9 +25,10 @@ def create_argparser():
     parser.add_argument("--input_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help="template path for input dir")
     parser.add_argument("--output_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help="template path for output dir")
     parser.add_argument("--envmap_dir", type=str, default="envmap_perspective_v3", help="envmap dir")
-    parser.add_argument("--shcoeff_dir", type=str, default="shcoeff_perspective_v3_order100", help="envmap dir")
+    parser.add_argument("--shcoeff_dir", type=str, default="shcoeff_perspective_v3_order100_div1", help="envmap dir")
     parser.add_argument("--num_order", type=int, default=100, help="number of sperical harmonic order")
     parser.add_argument("--threads", type=int, default=8, help="number of threads")
+    parser.add_argument("--div_scaler", type=float, default=1.0, help="divide scaler")
     return parser
 
 def process_file(args, meta):
@@ -47,7 +48,7 @@ def process_file(args, meta):
         return None
     try:
         if file_extension == ".exr":
-            image = ezexr.imread(in_path)
+            image = ezexr.imread(in_path) / args.div_scaler
         else:
             image = skimage.io.imread(in_path)
             image = skimage.img_as_float(image)

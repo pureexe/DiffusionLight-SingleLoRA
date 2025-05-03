@@ -88,7 +88,7 @@ def compute_background(
         output_image.append(grid_data[...,None])    
 
     output_image = np.concatenate(output_image,axis=-1)
-    output_image = np.clip(output_image, 0.0 ,1.0)
+    #output_image = np.clip(output_image, 0.0 ,1.0)
     return output_image
 
 
