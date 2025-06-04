@@ -23,3 +23,5 @@ real_checkpoint/
 command/*.sh
 output/
 output_t1/
+output_t1
+bin/.nfs0000000007881c3800000408
