@@ -1,8 +1,11 @@
 import os
 import time
 
-TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/train/"
-TARGET_DIR = "envmap_perspective_v3"
+#TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/train/"
+#TARGET_DIR = "envmap_perspective_v3"
+
+TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output_t1/multi_illumination/real/train"
+TARGET_DIR = "shading_exr_perspective_v3_order6_marigold_v2"
 
 def count_files():
     count = 0

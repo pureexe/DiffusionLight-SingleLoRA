@@ -15,10 +15,14 @@ from scipy.spatial.transform import Rotation as R
 import pyshtools
 
 MASTER_TYPE = torch.float16
-DATASET_PATH = "/ist/ist-share/vision/relight/datasets/laion-aesthetics-1024/images"
-OUTPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024"
-#SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/raw"
-SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_v3_order100"
+# DATASET_PATH = "/ist/ist-share/vision/relight/datasets/laion-aesthetics-1024/images"
+# OUTPUT_DIR = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024"
+# #SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/raw"
+# SCENE_TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_v3_order100"
+
+DATASET_PATH = "/pure/t1/datasets/laion-aesthetics-1024/images"
+OUTPUT_DIR = "/pure/t1/output/DiffusionLight-SingleLoRA/laion-aesthetics-1024"
+SCENE_TEMPLATE = "/pure/t1/output/DiffusionLight-SingleLoRA/laion-aesthetics-1024/{}/shcoeff_perspective_v3_order100"
 
 TOTAL_SCENE = 816
 
@@ -30,7 +34,7 @@ def create_argparser():
 
 def main():
     args = create_argparser().parse_args()
-    dir_ids = list(range(200, TOTAL_SCENE))
+    dir_ids = list(range(0, TOTAL_SCENE))
     dir_ids = dir_ids[args.idx::args.total]
 
     # load dataset
@@ -43,15 +47,16 @@ def main():
     for dir_id in dir_ids:
         
         scene_id = f"{dir_id * 1000:06d}"
-        chromeball_raw_dir =  SCENE_TEMPLATE.format(scene_id)
-        if not os.path.exists(chromeball_raw_dir):
-            continue
+        # chromeball_raw_dir =  SCENE_TEMPLATE.format(scene_id)
+        # if not os.path.exists(chromeball_raw_dir):
+        #     continue
         output_dir = os.path.join(OUTPUT_DIR, scene_id)
         if not os.path.exists(output_dir):
             continue
 
         #files_ids = sorted([a.replace('_ev-00.png','') for a in os.listdir(chromeball_raw_dir) if a.endswith('_ev-00.png')])
-        files_ids = sorted([a.replace('.npy','') for a in os.listdir(chromeball_raw_dir) if a.endswith('.npy')])
+        input_path = os.path.join(DATASET_PATH, scene_id)
+        files_ids = sorted([a.replace('.jpg','') for a in os.listdir(input_path) if a.endswith('.jpg')])
         normal_dir = os.path.join(output_dir, 'normal')
         os.makedirs(output_dir, exist_ok=True)
         os.makedirs(normal_dir, exist_ok=True)
@@ -61,8 +66,16 @@ def main():
         for file_id in tqdm(files_ids):
             try:
                 npz_path = os.path.join(normal_dir, file_id+'.npz')
+                # if os.path.exists(npz_path):
+                #     continue
                 if os.path.exists(npz_path):
-                    continue
+                    try:
+                        normal_map = np.load(npz_path)
+                        normal_map = normal_map[normal_map.files[0]]
+                        continue
+                    except:
+                        pass
+
                 image_path = os.path.join(DATASET_PATH, scene_id, file_id +'.jpg')
                 image = skimage.io.imread(image_path)
                 image = skimage.img_as_float(image)

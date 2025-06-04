@@ -2,8 +2,8 @@ import os
 import json 
 
 TOTAL_FRAME = 816
-SHADING_DIR = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/shadings_marigold"
-INDEX_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/index/150k_marigold.json"
+SHADING_DIR = "/pure/t1/datasets/laion-shading/v4/train/shadings_marigold"
+INDEX_PATH = "/pure/t1/datasets/laion-shading/v4/train/index/150k_marigold.json"
 PROMPT_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/prompts.json"
 DEFAULT_PROMPT = "a photorealistic image"
 
@@ -13,6 +13,7 @@ def main():
         "envmap_index": []
     }
     prompts = {}
+    meet = 0
     for scene_id in range(TOTAL_FRAME):
         scene_name = f"{scene_id*1000:06d}"
         shading_dir = os.path.join(

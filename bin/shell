@@ -1,0 +1,3 @@
+#!/bin/bash
+
+singularity shell --bind /ist:/ist --bind /pure:/pure --bind /ist/ist-share/vision/relight/datasets:/data/pakkapon/datasets --nv --env HF_HUB_CACHE=/ist/ist-share/vision/huggingface/hub/ --env HUB_HOME=/ist/ist-share/vision/huggingface/  --env HF_HOME=/ist/ist-share/vision/huggingface --env PYTHONPATH=$(pwd):$(pwd)/src /ist/ist-share/vision/pakkapon/singularity/diffusionlight0230.sif

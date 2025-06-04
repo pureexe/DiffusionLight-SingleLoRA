@@ -2,7 +2,10 @@ import ezexr
 import matplotlib.pyplot as plt 
 import numpy as np 
 
-IMAGE_PATH = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate/everett_kitchen6/envmap_perspective_v3_pred_order_100v3/dir_0_mip2.exr"
+#IMAGE_PATH = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate/everett_kitchen6/envmap_perspective_v3_pred_order_100v3/dir_0_mip2.exr"
+#IMAGE_PATH = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate/everett_kitchen2/shading_exr_perspective_v3_order3from3_ball/dir_30_mip2.exr"
+#IMAGE_PATH = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate/everett_kitchen2/shading_exr_perspective_v3_order6from6mul32_ball/dir_30_mip2.exr"
+IMAGE_PATH = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate/everett_kitchen2/shading_exr_perspective_v3_order3_ball/dir_30_mip2.exr"
 
 def main():
     image = ezexr.imread(IMAGE_PATH)
@@ -19,7 +22,7 @@ def main():
     plt.colorbar(img, label='Value')
     plt.title('Normalized Grayscale Visualization')
     plt.axis('off')
-    plt.savefig("viz_brightness.png", bbox_inches='tight', dpi=300)
+    plt.savefig("viz_brightness_order3.png", bbox_inches='tight', dpi=300)
     plt.close()
 
     

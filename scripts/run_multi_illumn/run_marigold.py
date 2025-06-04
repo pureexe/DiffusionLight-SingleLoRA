@@ -21,8 +21,8 @@ def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--idx", type=int, default=0)
     parser.add_argument("-t", "--total", type=int, default=1)
-    parser.add_argument("--input_dir", type=str, default='/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/rotate/images')
-    parser.add_argument("--output_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate")
+    parser.add_argument("--input_dir", type=str, default='/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/test/images')
+    parser.add_argument("--output_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output_t1/multi_illumination/real/test")
     parser.add_argument("--dir_name", type=str, default="normal")
     return parser
 

@@ -22,3 +22,4 @@ models/
 real_checkpoint/
 command/*.sh
 output/
+output_t1/

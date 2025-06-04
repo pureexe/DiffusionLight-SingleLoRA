@@ -9,6 +9,7 @@ from multiprocessing import Pool
 from functools import partial
 from tqdm.auto import tqdm
 from sh_utils import get_shcoeff, flatten_sh_coeff
+import json
 
 import argparse
 
@@ -22,13 +23,16 @@ def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--total", type=int, default=1, help="total process")
     parser.add_argument("-i","--idx", type=int, default=0, help="process id")
-    parser.add_argument("--input_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help="template path for input dir")
-    parser.add_argument("--output_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help="template path for output dir")
+    parser.add_argument("--input_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/real/train", help="template path for input dir")
+    parser.add_argument("--output_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/real/train", help="template path for output dir")
     parser.add_argument("--envmap_dir", type=str, default="envmap_perspective_v3", help="envmap dir")
-    parser.add_argument("--shcoeff_dir", type=str, default="shcoeff_perspective_v3_order100_div1", help="envmap dir")
+    parser.add_argument("--shcoeff_dir", type=str, default="shcoeff_perspective_v3_order100", help="envmap dir")
     parser.add_argument("--num_order", type=int, default=100, help="number of sperical harmonic order")
     parser.add_argument("--threads", type=int, default=8, help="number of threads")
     parser.add_argument("--div_scaler", type=float, default=1.0, help="divide scaler")
+    parser.add_argument("--over_zero", type=int, default=0, help="chrange range to [-1,1] if need")
+    parser.add_argument("--log_transform", type=int, default=0, help="use log transform to compress range")
+    parser.add_argument("--scene_ids", type=str, default="")
     return parser
 
 def process_file(args, meta):
@@ -37,7 +41,10 @@ def process_file(args, meta):
     input_dir = os.path.join(args.input_dir, scene, args.envmap_dir)
     out_dir = os.path.join(args.input_dir, scene, args.shcoeff_dir)
     os.makedirs(out_dir,exist_ok=True)
-    os.chmod(out_dir, 0o777)
+    try:
+        os.chmod(out_dir, 0o777)
+    except:
+        pass
 
     _, file_extension = os.path.splitext(filename)
     out_path = os.path.join(out_dir, filename.replace(file_extension, ".npy"))
@@ -48,18 +55,26 @@ def process_file(args, meta):
         return None
     try:
         if file_extension == ".exr":
-            image = ezexr.imread(in_path) / args.div_scaler
+            image = ezexr.imread(in_path) 
+            image = image / args.div_scaler
         else:
             image = skimage.io.imread(in_path)
             image = skimage.img_as_float(image)
     except:
         return None
+    if args.over_zero == 1:
+        image = (image * 2.0) - 1.0
+    if args.log_transform == 1:
+        image = np.log(image + 1e-3)
     image = image[...,:3]
     image = np.clip(image,0,np.inf)
     coeff = get_shcoeff(image, Lmax=args.num_order)
     shcoeff = flatten_sh_coeff(coeff, max_sh_level=args.num_order)
     np.save(out_path, shcoeff)
-    os.chmod(out_dir, 0o777)
+    try:
+        os.chmod(out_dir, 0o777)
+    except:
+        pass
     return None
 
 
@@ -70,7 +85,13 @@ def main():
     queues = []
 
     print("seeking file...")
-    scenes = os.listdir(args.input_dir)
+
+    if args.scene_ids != "":
+        with open(args.scene_ids, 'r') as f:
+            scenes = json.load(f)
+    else:
+        scenes = sorted(os.listdir(args.input_dir))
+
     for scene_name in tqdm(scenes):
         input_dir = os.path.join(args.input_dir, scene_name, args.envmap_dir)
         avalible_files = sorted(os.listdir(input_dir))

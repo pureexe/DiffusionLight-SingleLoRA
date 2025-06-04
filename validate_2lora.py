@@ -160,7 +160,17 @@ def interpolate_embedding(pipe, args):
 def main():
     # load arguments
     args = create_argparser().parse_args()
-        
+    
+    # try:
+    #     square_output_dir = os.path.join(args.output_dir, "square")
+    #     count_file = len(os.listdir(square_output_dir))
+    #     if count_file >= 25:
+    #         print("skip")
+    #         exit(1)
+    # except:
+    #     pass
+
+
     # get local rank
     if args.is_cpu:
         device = torch.device("cpu")

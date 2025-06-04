@@ -62,7 +62,13 @@ def main():
             try:
                 npz_path = os.path.join(normal_dir, file_id+'.npz')
                 if os.path.exists(npz_path):
-                    continue
+                    try:
+                        normal_map = np.load(npz_path)
+                        normal_map = normal_map[normal_map.files[0]]
+                        continue
+                    except:
+                        pass
+
                 image_path = os.path.join(DATASET_PATH, file_id +'.jpg')
                 image = skimage.io.imread(image_path)
                 image = skimage.img_as_float(image)

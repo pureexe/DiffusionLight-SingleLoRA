@@ -143,6 +143,7 @@ def main():
     infolist = []
     for k in info:
         if len(info[k]) != len(evs):
+            print("PATH:" , args.input_dir)
             print("WARNING: missing ev in ", k)
             continue
         # convert to list data

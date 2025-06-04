@@ -2,14 +2,18 @@ import os
 import pathlib
 
 # Define the source and destination patterns
+# source_base = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate"
+# dest_base = "/ist/ist-share/vision/relight/datasets/multi_illumination/shadings/least_square/v3/rotate/shadings_marigold"
+
 source_base = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate"
-dest_base = "/ist/ist-share/vision/relight/datasets/multi_illumination/shadings/least_square/v3/rotate/shadings_marigold"
+dest_base = "/ist/ist-share/vision/relight/datasets/multi_illumination/shadings/least_square/v3/rotate/shadings_marigold_v2"
+
 
 # Iterate over the directories from 000000 to 815000 in steps of 1000
 scenes = sorted(os.listdir(source_base))
 for dir_name in scenes:
     
-    source_path = os.path.join(source_base, dir_name, "shading_exr_perspective_v3_order6_marigold")
+    source_path = os.path.join(source_base, dir_name, "shading_exr_perspective_v3_order6_v2")
     dest_path = os.path.join(dest_base, dir_name)
     
     # Ensure source exists

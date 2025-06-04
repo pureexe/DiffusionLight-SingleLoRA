@@ -3,7 +3,7 @@ import time
 
 TOTAL_SCENE = 816
 #TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_lotus"
-TEMPLATE = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_marigold"
+TEMPLATE = "/pure/t1/output/DiffusionLight-SingleLoRA/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_marigold_v2"
 
 
 def count_files():

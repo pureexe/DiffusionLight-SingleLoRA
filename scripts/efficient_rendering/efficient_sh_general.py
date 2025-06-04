@@ -12,6 +12,7 @@ import time
 import argparse
 from sh_utils import get_ideal_normal_ball_z_up, get_shcoeff, compute_background, sample_from_sh, unfold_sh_coeff, apply_integrate_conv, from_x_left_to_z_up, from_y_up_to_z_up, cartesian_to_spherical
 from tonemapper import TonemapHDR
+import json
 
 def get_fov(args, scene_name, filename):
     focal_dir = args.focal_dir_template.format(scene_name)
@@ -115,10 +116,11 @@ def process_scene(args, info):
     if os.path.exists(output_path):
         return None
 
-    normal_dir = os.path.join(args.output_dir, scene_name, args.normal_dir)      
+    normal_filename = 'dir_0_mip2' if args.use_rotate_normal == 1 else filename
+    normal_dir = os.path.join(args.input_dir, scene_name, args.normal_dir)      
     normal_path = os.path.join(
         normal_dir,
-        filename + '.npz'
+        normal_filename + '.npz'
     )
         
     # load normal map
@@ -147,7 +149,7 @@ def process_scene(args, info):
     
     if args.use_single_ray_trace == 1:
         # we need to convert normal to reflection vector first 
-        fov = get_fov(args, scene_name, filename)
+        fov = get_fov(args, scene_name, normal_filename)
         viewing_directions = get_viewing_directions(args.image_height, args.image_width, fov)
         reflect_directions = get_reflect_directions(viewing_directions, normal_directions)
         theta, phi = cartesian_to_spherical(reflect_directions)
@@ -158,7 +160,7 @@ def process_scene(args, info):
         theta, phi = cartesian_to_spherical(normal_directions)
        
     # load shcoeff 
-    coeff_dir = os.path.join(args.output_dir, scene_name, args.coeff_dir)
+    coeff_dir = os.path.join(args.input_dir, scene_name, args.coeff_dir)
     coeff_path = os.path.join(
         coeff_dir, # (3, 10201)
         filename + '.npy'
@@ -218,8 +220,12 @@ def efficient_rendering(args):
     queues = []
     # seek file 
     print("seeking file...")
-    scenes = os.listdir(args.input_dir)
-    #scenes = ['everett_dining1']
+    if args.scene_ids != "":
+        with open(args.scene_ids, 'r') as f:
+            scenes = json.load(f)
+    else:
+        scenes = sorted(os.listdir(args.input_dir))
+    #scenes = ['14n_copyroom1/000000']
     for scene_name in tqdm(scenes):
         input_dir = os.path.join(args.input_dir, scene_name, args.coeff_dir)
         avalible_files = sorted([a.replace('.npy','') for a in os.listdir(input_dir)])
@@ -241,22 +247,24 @@ if __name__ == "__main__":
     parser.add_argument( '--image_width', type=int, default=512, help='size of image to generate in width')
     parser.add_argument( '--image_height', type=int, default=512, help='size of image to generate in height')
     parser.add_argument( '--fov_width', type=int, default=512, help='image size when calcurating fov')
-    parser.add_argument('--input_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help='input dir')
-    parser.add_argument('--output_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help='output dir')
+    parser.add_argument('--input_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/real/train", help='input dir')
+    parser.add_argument('--output_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output_t1/multi_illumination/real/train", help='output dir')
     parser.add_argument('--focal_dir', type=str, default="focal", help='template for coeff dir')
     parser.add_argument('--coeff_dir', type=str, default="shcoeff_perspective_v3_order100", help='template for coeff dir')
     parser.add_argument('--normal_dir', type=str, default="normal", help='template for normal dir')
-    parser.add_argument('--shading_dir', type=str, default="shading_exr_perspective_v3_order100_marigold", help='template for output dir')
-    parser.add_argument('--vizmax_dir', type=str, default="shading_exr_perspective_v3_order100_marigold_viz_max", help='template for vizmax dir')
-    parser.add_argument('--vizldr_dir', type=str, default="shading_exr_perspective_v3_order100_marigold_viz_ldr", help='template for vizldr dir')
-    parser.add_argument('--num_order', type=int, default=100)
+    parser.add_argument('--shading_dir', type=str, default="shading_exr_perspective_v3_order6_v2", help='template for output dir')
+    parser.add_argument('--vizmax_dir', type=str, default="shading_exr_perspective_v3_order6_max", help='template for vizmax dir')
+    parser.add_argument('--vizldr_dir', type=str, default="shading_exr_perspective_v3_order6_ldr", help='template for vizldr dir')
+    parser.add_argument('--num_order', type=int, default=6)
     parser.add_argument('--apply_integrate', type=int, default=1)
-    parser.add_argument('--threads', type=int, default=12)
+    parser.add_argument('--threads', type=int, default=8)
     parser.add_argument('--use_viz', type=int, default=0)
     parser.add_argument('--use_lotus', type=int, default=0)
+    parser.add_argument('--use_rotate_normal', type=int, default=0)
     parser.add_argument('--use_ball', type=int, default=0, help="use ball as a normal map")
     parser.add_argument('--use_single_ray_trace', type=int, default=0, help="when use single ray tracing")
-    
+    parser.add_argument("--scene_ids", type=str, default="")
+
     args = parser.parse_args()
     efficient_rendering(args)
 

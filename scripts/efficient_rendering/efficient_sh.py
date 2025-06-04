@@ -12,6 +12,7 @@ import time
 import argparse
 from sh_utils import get_ideal_normal_ball_z_up, get_shcoeff, compute_background, sample_from_sh, unfold_sh_coeff, apply_integrate_conv, from_x_left_to_z_up, from_y_up_to_z_up, cartesian_to_spherical
 from tonemapper import TonemapHDR
+import json
 
 def get_fov(args, scene_name, filename):
     focal_dir = args.focal_dir_template.format(scene_name)
@@ -127,8 +128,15 @@ def process_scene(args, info):
     else:
         try:
             normal_map = np.load(normal_path)
+        except:
+            print("NO NORMAL MAP")
+            return None
+        try:
             normal_map = normal_map[normal_map.files[0]]
         except:
+            print("FAILED TO EXTRACT")
+            print("PATH THAT FAILED: ", normal_path)
+            normal_map = normal_map[normal_map.files[0]]
             return None
         # normmalize normal map
         normal_map = normal_map.astype(np.float32)
@@ -212,20 +220,31 @@ def process_scene(args, info):
             pass
     return None
 
+# def efficient_rendering(args):
+#     queues = []
+#     scene_lists = list(range(args.total_scene))
+#     for scene_id in tqdm(scene_lists):
+#         scene_name = f"{scene_id*1000:06d}"
+#         coeff_dir = args.coeff_dir_template.format(scene_name)
+#         if not os.path.exists(coeff_dir):
+#             continue
+#         filenames = sorted([a for a in os.listdir(coeff_dir) if a.endswith('.npy')])
+#         for filename in filenames:
+#             out_path = os.path.join(args.output_dir_template.format(scene_name), filename.replace('.npy', '.exr'))
+#             if not os.path.exists(out_path):
+#                 queues.append((scene_name, filename.replace('.npy', ''), args))
+            
+#     queues = queues[args.idx::args.total]
+
+#     fn = partial(process_scene, args)
+#     with Pool(args.threads) as pool:
+#         list(tqdm(pool.imap_unordered(fn, queues), total=len(queues)))
+
 def efficient_rendering(args):
     queues = []
-    scene_lists = list(range(args.total_scene))
-    for scene_id in tqdm(scene_lists):
-        scene_name = f"{scene_id*1000:06d}"
-        coeff_dir = args.coeff_dir_template.format(scene_name)
-        if not os.path.exists(coeff_dir):
-            continue
-        filenames = sorted([a for a in os.listdir(coeff_dir) if a.endswith('.npy')])
-        for filename in filenames:
-            out_path = os.path.join(args.output_dir_template.format(scene_name), filename.replace('.npy', '.exr'))
-            if not os.path.exists(out_path):
-                queues.append((scene_name, filename.replace('.npy', ''), args))
-            
+    with open('queues.json','r') as f:
+        queues = json.load(f) 
+                   
     queues = queues[args.idx::args.total]
 
     fn = partial(process_scene, args)
@@ -242,12 +261,12 @@ if __name__ == "__main__":
     parser.add_argument( '--fov_width', type=int, default=1024, help='image size when calcurating fov')
     parser.add_argument('--focal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/focal", help='template for coeff dir')
     parser.add_argument('--coeff_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shcoeff_perspective_v3_order100", help='template for coeff dir')
-    parser.add_argument('--normal_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/normal", help='template for normal dir')
-    parser.add_argument('--output_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2_marigold", help='template for output dir')
-    parser.add_argument('--vizmax_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2_marigold_viz_max", help='template for vizmax dir')
-    parser.add_argument('--vizldr_dir_template', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order2_marigold_viz_ldr", help='template for vizldr dir')
+    parser.add_argument('--normal_dir_template', type=str, default="/pure/t1/output/DiffusionLight-SingleLoRA/laion-aesthetics-1024/{}/normal", help='template for normal dir')
+    parser.add_argument('--output_dir_template', type=str, default="/pure/t1/output/DiffusionLight-SingleLoRA/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_marigold_v2", help='template for output dir')
+    parser.add_argument('--vizmax_dir_template', type=str, default="/pure/t1/output/DiffusionLight-SingleLoRA/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_marigold_v2_viz_max", help='template for vizmax dir')
+    parser.add_argument('--vizldr_dir_template', type=str, default="/pure/t1/output/DiffusionLight-SingleLoRA/laion-aesthetics-1024/{}/shading_exr_perspective_v3_order6_marigold_v2_viz_ldr", help='template for vizldr dir')
     parser.add_argument('--total_scene', type=int, default=816)
-    parser.add_argument('--num_order', type=int, default=2)
+    parser.add_argument('--num_order', type=int, default=6)
     parser.add_argument('--apply_integrate', type=int, default=1)
     parser.add_argument('--threads', type=int, default=8)
     parser.add_argument('--use_viz', type=int, default=0)

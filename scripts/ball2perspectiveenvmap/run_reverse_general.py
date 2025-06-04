@@ -1,22 +1,29 @@
 import os 
 import argparse
+import json
 
 def create_argparser():    
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--idx", type=int, default=0)
-    parser.add_argument("-t", "--total", type=int, default=19)
+    parser.add_argument("-t", "--total", type=int, default=1)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--square_hdr_dir", type=str, default="square_hdr")
     parser.add_argument("--focal_dir", type=str, default="focal")
-    parser.add_argument("--input_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate")
-    parser.add_argument("--output_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate")
+    parser.add_argument("--input_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/real/train")
+    parser.add_argument("--output_dir", type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/real/train")
     parser.add_argument("--envmap_dir", type=str, default="envmap_perspective_v3")
+    parser.add_argument("--scene_ids", type=str, default="")
     return parser
 
 
 def main():
     args = create_argparser().parse_args()
-    scene_ids = sorted(os.listdir(args.input_dir))
+    if args.scene_ids != "":
+        with open(args.scene_ids, 'r') as f:
+            scene_ids = json.load(f)
+    else:
+        print(os.listdir("/pure"))
+        scene_ids = sorted(os.listdir(args.input_dir))
     scene_ids = scene_ids[args.idx::args.total]
     for scene_name in scene_ids:
         in_dir = os.path.join(args.input_dir, scene_name, args.square_hdr_dir)

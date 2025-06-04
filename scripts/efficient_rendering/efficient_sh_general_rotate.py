@@ -170,6 +170,13 @@ def process_scene(args, info):
         shcoeff = apply_integrate_conv(shcoeff, lmax=args.num_order)
     
     shading = sample_from_sh(shcoeff, lmax=args.num_order, theta=theta, phi=phi)
+    if args.over_zero == 1:
+        shading = (shading + 1.0) / 2.0
+    if args.log_transform == 1:
+        shading = np.exp(shading) - 1e-3
+    shading = (args.mul_value * shading) + args.add_value
+    print("SHADING MAX: ", shading.max())
+    print("SHADING MIN: ", shading.min())
 
     #shading = sample_from_sh_numpy(shcoeff, lmax=args.num_order, theta=theta, phi=phi)
     
@@ -235,6 +242,36 @@ def efficient_rendering(args):
     with Pool(args.threads) as pool:
         list(tqdm(pool.imap_unordered(fn, queues), total=len(queues)))
 
+
+# def efficient_rendering(args):
+#     for mode in ['','_ball']:
+#         for order in [2,3,4,6,10,20,50,100]:
+#             args.num_order = order
+#             args.shading_dir = f"shading_exr_perspective_v3_order{order}_v2{mode}"
+#             args.vizldr_dir = args.shading_dir + "_viz_ldr"
+#             args.vizmax_dir = args.shading_dir + "_viz_max"
+#             if mode == '_ball':
+#                 args.use_ball = 1
+#             else:
+#                 args.use_ball = 0
+#             queues = []
+#             # seek file 
+#             print("seeking file...")
+#             #scenes = os.listdir(args.input_dir)
+#             scenes = ['everett_kitchen2']
+#             for scene_name in tqdm(scenes):
+#                 input_dir = os.path.join(args.input_dir, scene_name, args.coeff_dir)
+#                 avalible_files = sorted([a.replace('.npy','') for a in os.listdir(input_dir)])
+#                 for fname in avalible_files:
+#                     queues.append(
+#                         [scene_name, fname]
+#                     )
+#             queues = queues[args.idx::args.total]
+#             fn = partial(process_scene, args)
+#             print("Predicting..")
+#             with Pool(args.threads) as pool:
+#                 list(tqdm(pool.imap_unordered(fn, queues), total=len(queues)))
+
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process index and total.")
@@ -243,22 +280,26 @@ if __name__ == "__main__":
     parser.add_argument( '--image_width', type=int, default=512, help='size of image to generate in width')
     parser.add_argument( '--image_height', type=int, default=512, help='size of image to generate in height')
     parser.add_argument( '--fov_width', type=int, default=512, help='image size when calcurating fov')
-    parser.add_argument('--input_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help='input dir')
-    parser.add_argument('--output_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate", help='output dir')
+    parser.add_argument('--input_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/real/rotate", help='input dir')
+    parser.add_argument('--output_dir', type=str, default="/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/real/rotate", help='output dir')
     parser.add_argument('--focal_dir', type=str, default="focal", help='template for coeff dir')
     parser.add_argument('--coeff_dir', type=str, default="shcoeff_perspective_v3_order100", help='template for coeff dir')
     parser.add_argument('--normal_dir', type=str, default="normal", help='template for normal dir')
-    parser.add_argument('--shading_dir', type=str, default="shading_exr_perspective_v3_order2_ball", help='template for output dir')
-    parser.add_argument('--vizmax_dir', type=str, default="shading_exr_perspective_v3_order2_ball_viz_max", help='template for vizmax dir')
-    parser.add_argument('--vizldr_dir', type=str, default="shading_exr_perspective_v3_order2_ball_viz_ldr", help='template for vizldr dir')
-    parser.add_argument('--num_order', type=int, default=2)
+    parser.add_argument('--shading_dir', type=str, default="shading_exr_perspective_v3_order6", help='template for output dir')
+    parser.add_argument('--vizmax_dir', type=str, default="shading_exr_perspective_v3_order6_viz_max", help='template for vizmax dir')
+    parser.add_argument('--vizldr_dir', type=str, default="shading_exr_perspective_v3_order6_viz_ldr", help='template for vizldr dir')
+    parser.add_argument('--num_order', type=int, default=6)
     parser.add_argument('--apply_integrate', type=int, default=1)
     parser.add_argument('--threads', type=int, default=8)
     parser.add_argument('--use_viz', type=int, default=1)
     parser.add_argument('--use_lotus', type=int, default=0)
-    parser.add_argument('--use_ball', type=int, default=1, help="use ball as a normal map")
+    parser.add_argument('--use_ball', type=int, default=0, help="use ball as a normal map")
     parser.add_argument('--use_single_ray_trace', type=int, default=0, help="when use single ray tracing")
-    
+    parser.add_argument('--over_zero', type=int, default=0, help="re-adjust back from [-1,1] to [0,1]")
+    parser.add_argument('--mul_value', type=float, default=1.0, help="multiply value for the image")
+    parser.add_argument('--add_value', type=float, default=0.0, help="multiply value for the image")
+    parser.add_argument("--log_transform", type=int, default=0, help="use log transform to compress range")
+
     args = parser.parse_args()
     efficient_rendering(args)
 

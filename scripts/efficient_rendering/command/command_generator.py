@@ -1,5 +1,5 @@
 
-TOTAL_JOB = 48
+TOTAL_JOB = 32
 
 for i in range(TOTAL_JOB):
     
@@ -15,7 +15,7 @@ for i in range(TOTAL_JOB):
 #SBATCH --time=72:0:0                # Runing time 2 days
 #SBATCH --gpus=1                    # A number of GPUs  
 
-singularity exec --bind /ist:/ist  --bind /ist/ist-share/vision/relight/datasets:/data/pakkapon/datasets --nv --env HF_HUB_CACHE=/ist/ist-share/vision/huggingface/hub/ --env HUB_HOME=/ist/ist-share/vision/huggingface/ /ist/ist-share/vision/pakkapon/singularity/diffusers0310v6.sif python efficient_sh.py --total {TOTAL_JOB} --idx {i}
+singularity exec --bind /ist:/ist --bind /pure:/pure --bind /ist/ist-share/vision/relight/datasets:/data/pakkapon/datasets --nv --env HF_HUB_CACHE=/ist/ist-share/vision/huggingface/hub/ --env HUB_HOME=/ist/ist-share/vision/huggingface/ /ist/ist-share/vision/pakkapon/singularity/diffusers0310v6.sif python efficient_sh.py --total {TOTAL_JOB} --idx {i}
 """
     with open(f"{i:03d}.sh",'w') as f:
         f.write(output)

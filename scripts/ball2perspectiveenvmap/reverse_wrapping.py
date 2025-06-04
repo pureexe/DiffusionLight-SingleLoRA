@@ -428,11 +428,17 @@ def process_image(args: argparse.Namespace, file_name: str):
                 image, _, _ = tonemap(env_map_default)
                 image = skimage.img_as_ubyte(image)
                 skimage.io.imsave(envmap_output_path+'.png', image)
-                os.chmod(envmap_output_path+'.png', 0o777)
+                try:
+                    os.chmod(envmap_output_path+'.png', 0o777)
+                except:
+                    pass
         else:
             env_map_default = skimage.img_as_ubyte(env_map_default)        
             skimage.io.imsave(envmap_output_path, env_map_default)
-        os.chmod(envmap_output_path, 0o777)
+        try:
+            os.chmod(envmap_output_path, 0o777)
+        except:
+            pass
     except:
         None
     return None
@@ -446,7 +452,10 @@ def main(args):
     
     # make output directory if not exist
     os.makedirs(args.envmap_dir, exist_ok=True)
-    os.chmod(args.envmap_dir, 0o777)
+    try:
+        os.chmod(args.envmap_dir, 0o777)
+    except:
+        pass
     
     # get all file in the directory
     files = sorted(os.listdir(args.ball_dir))

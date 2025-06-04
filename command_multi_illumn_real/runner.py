@@ -1,5 +1,6 @@
 import os 
 import argparse 
+import json
 
 HUGGINGFACE_PATH="/ist/ist-share/vision/huggingface"
 DATASET_PATH = "/ist/ist-share/vision/relight/datasets/multi_illumination/spherical/train/images"
@@ -31,7 +32,9 @@ def create_argparser():
 
 def main():
     args = create_argparser().parse_args()
-    scenes = os.listdir(DATASET_PATH)
+    #scenes = os.listdir(DATASET_PATH)
+    with open("/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/command_multi_illumn_real/scenes_with_few_or_no_square_files.json", 'r') as f:
+        scenes = json.load(f)
     scenes = scenes[args.idx::args.total]
     for dirname in scenes:
         # make a scrash

@@ -1,10 +1,12 @@
 import os  
 import json 
 
-TOTAL_FRAME = 816
-SHADING_DIR = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/shadings"
-INDEX_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/index/150k.json"
-PROMPT_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/prompts.json"
+#TOTAL_FRAME = 816
+TOTAL_FRAME = 1
+SHADING_DIR = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/shadings_marigold"
+#INDEX_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/index/150k.json"
+INDEX_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/index/single.json"
+PROMPT_PATH = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/prompts_single.json"
 DEFAULT_PROMPT = "a photorealistic image"
 
 def main():
@@ -28,8 +30,8 @@ def main():
             indexs['image_index'].append(name)
             indexs['envmap_index'].append([name])
             prompts[name] = DEFAULT_PROMPT
-    indexs['image_index'] = indexs['image_index'][:150000]
-    indexs['envmap_index'] = indexs['envmap_index'][:150000]            
+    indexs['image_index'] = indexs['image_index'][:1]
+    indexs['envmap_index'] = indexs['envmap_index'][:1]            
     with open(INDEX_PATH, "w") as json_file:
         json.dump(indexs, json_file, indent=4)
     #with open(PROMPT_PATH, "w") as json_file:

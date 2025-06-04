@@ -1,5 +1,6 @@
 import os 
 import argparse 
+import json 
 
 HUGGINGFACE_PATH="/ist/ist-share/vision/huggingface"
 DATASET_PATH = "/ist/ist-share/vision/relight/datasets/laion-aesthetics-1024/images"
@@ -32,10 +33,13 @@ def create_argparser():
 
 def main():
     args = create_argparser().parse_args()
-    total_scene = ((args.num_dir - 1) // args.total) + 1
-    for dir_id in range(args.idx * total_scene, (args.idx+1) * total_scene):
+    with open("/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/command/need_to_process.json", "r") as f:
+        need_to_process = json.load(f)
+    #total_scene = ((args.num_dir - 1) // args.total) + 1
+    #for dir_id in range(args.idx * total_scene, (args.idx+1) * total_scene):
+    for dirname in need_to_process[args.idx::args.total]:
         # make a scrash
-        dirname = f"{(dir_id * 1000):06d}"
+        #dirname = f"{(dir_id * 1000):06d}"
         dataset_path = os.path.join(DATASET_PATH, dirname)
         output_path = os.path.join(OUTPUT_PATH, dirname)
         cache_path = os.path.join(CACHE_DIR, dirname)

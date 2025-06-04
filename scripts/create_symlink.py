@@ -2,14 +2,27 @@ import os
 import pathlib
 
 # Define the source and destination patterns
-source_base = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024"
-dest_base = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/shadings_marigold"
+# source_base = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/laion-aesthetics-1024"
+# dest_base = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/shadings_marigold_v2"
 
+# source_base = "/ist/ist-share/vision/pakkapon/relight/DiffusionLight-SingleLoRA/output/multi_illumination/least_square/rotate"
+# dest_base = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/rotate/shadings_marigold_v2"
+
+source_base = "/pure/t1/output/DiffusionLight-SingleLoRA/laion-aesthetics-1024"
+dest_base = "/pure/t1/datasets/laion-shading/v4/train/shadings_marigold"
+#dest_base = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/shadings_marigold_v2"
+
+# source_base = "/pure/t1/output/DiffusionLight-SingleLoRA/laion-aesthetics-1024"
+# dest_base = "/ist/ist-share/vision/relight/datasets/laion-shading/v3/train/shadings_marigold_v2"
+
+print("START LOOP")
 # Iterate over the directories from 000000 to 815000 in steps of 1000
 for i in range(0, 816000, 1000):
     dir_name = f"{i:06d}"
-    source_path = os.path.join(source_base, dir_name, "shading_exr_perspective_v3_order6_marigold")
+    source_path = os.path.join(source_base, dir_name, "shading_exr_perspective_v3_order6_marigold_v2")
     dest_path = os.path.join(dest_base, dir_name)
+
+
     
     # Ensure source exists
     if not os.path.exists(source_path):
@@ -27,3 +40,5 @@ for i in range(0, 816000, 1000):
         print(f"Symlink created: {dest_path} -> {source_path}")
     except OSError as e:
         print(f"Failed to create symlink for {dir_name}: {e}")
+
+print("DONE")
